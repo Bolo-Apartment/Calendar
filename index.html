@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bolo Apartment — Calendario</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #222; }
+  
+  header { background: #fff; border-bottom: 1px solid #e0e0da; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 16px; font-weight: 600; color: #222; }
+  .logo span { color: #c07a3a; }
+  .nav-btn { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 6px 14px; font-size: 14px; cursor: pointer; color: #555; }
+  .nav-btn:hover { background: #f0f0eb; }
+  .month-label { font-size: 15px; font-weight: 600; color: #222; }
+
+  .toolbar { background: #fff; padding: 8px 16px; border-bottom: 1px solid #e0e0da; display: flex; align-items: center; gap: 8px; }
+  .sync-btn { background: #c07a3a; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  .sync-btn:hover { background: #a86830; }
+  .sync-status { font-size: 12px; color: #888; }
+
+  .cal-wrap { padding: 12px; overflow-x: auto; }
+  
+  .day-headers { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 3px; margin-bottom: 3px; }
+  .day-header { text-align: center; font-size: 11px; font-weight: 600; color: #888; padding: 4px 0; letter-spacing: 0.05em; }
+
+  .weeks { display: flex; flex-direction: column; gap: 3px; }
+  .week-row { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 3px; }
+
+  .day-cell { border: 1px solid #e0e0da; border-radius: 6px; overflow: hidden; min-height: 80px; background: #fff; }
+  .day-cell.empty { background: #f5f5f0; border-color: #ebebе6; opacity: 0.5; }
+  .day-cell.today-cell { border: 2px solid #c07a3a; }
+
+  .day-num-row { display: flex; align-items: center; justify-content: center; padding: 4px 0 3px; border-bottom: 1px solid #f0f0eb; background: #fafaf8; }
+  .day-num { font-size: 12px; font-weight: 500; color: #444; }
+  .day-num.today-num { background: #c07a3a; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+
+  .sub-cells { display: grid; grid-template-columns: 1fr 1fr 1fr; height: calc(100% - 24px); }
+  .sub { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3px 2px; text-align: center; line-height: 1.3; min-height: 56px; border-right: 1px solid #f0f0eb; cursor: pointer; transition: opacity 0.15s; }
+  .sub:last-child { border-right: none; }
+  .sub:hover { opacity: 0.8; }
+  .sub-name { font-size: 9px; font-weight: 600; display: block; }
+  .sub-guests { font-size: 8px; display: block; margin-top: 2px; }
+  .sub-type { font-size: 7px; display: block; opacity: 0.7; margin-top: 1px; }
+
+  .sub-empty { background: #fafaf8; }
+  .sub-out { background: #ddeeff; }
+  .sub-out .sub-name { color: #1a5fa8; }
+  .sub-out .sub-guests { color: #2e74c0; }
+  .sub-clean { background: #ddf0e0; }
+  .sub-clean .sub-name { color: #1a6b35; }
+  .sub-clean .sub-type { color: #2e8047; }
+  .sub-in { background: #fff3dd; }
+  .sub-in .sub-name { color: #8a5200; }
+  .sub-in .sub-guests { color: #a06010; }
+  .sub-full { background: #7F77DD; }
+  .sub-full .sub-name { color: #fff; }
+  .sub-full .sub-guests { color: #ddd; }
+  .sub-full-clean { background: #1D9E75; }
+  .sub-full-clean .sub-name { color: #fff; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 16px; background: #fff; border-top: 1px solid #e0e0da; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; padding: 20px; width: 100%; max-width: 360px; }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .modal .modal-date { font-size: 13px; color: #888; margin-bottom: 16px; }
+  .modal label { font-size: 13px; font-weight: 500; color: #444; display: block; margin-bottom: 4px; }
+  .modal select, .modal input { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 14px; margin-bottom: 12px; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-save { flex: 1; background: #c07a3a; color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 14px; cursor: pointer; font-weight: 500; }
+  .btn-save:hover { background: #a86830; }
+  .btn-delete { background: #fee; color: #c00; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
+  .btn-cancel { background: #f5f5f0; color: #555; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
+
+  .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Bolo <span>Apartment</span></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+    <span class="month-label" id="monthLabel">—</span>
+    <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="sync-btn" onclick="loadData()">&#8635; Aggiorna</button>
+  <span class="sync-status" id="syncStatus">Caricamento...</span>
+</div>
+
+<div class="cal-wrap">
+  <div class="day-headers">
+    <div class="day-header">LUN</div>
+    <div class="day-header">MAR</div>
+    <div class="day-header">MER</div>
+    <div class="day-header">GIO</div>
+    <div class="day-header">VEN</div>
+    <div class="day-header">SAB</div>
+    <div class="day-header">DOM</div>
+  </div>
+  <div class="weeks" id="weeksGrid"><div class="loading">Caricamento prenotazioni...</div></div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ddeeff;border:1px solid #2e74c0;"></div> Check-out</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ddf0e0;border:1px solid #2e8047;"></div> Pulizie</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fff3dd;border:1px solid #a06010;"></div> Check-in</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7F77DD;"></div> Soggiorno in corso</div>
+</div>
+
+<!-- Modal pulizie -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Pulizia</h3>
+    <div class="modal-date" id="modalDate"></div>
+    <label>Tipo pulizia</label>
+    <select id="modalTipo">
+      <option value="Finale">Finale (check-out)</option>
+      <option value="Intermedia">Intermedia</option>
+      <option value="Straordinaria">Straordinaria</option>
+    </select>
+    <label>Chi pulisce</label>
+    <select id="modalChi">
+      <option value="">— seleziona —</option>
+      <option value="Maria">Maria</option>
+      <option value="Anna">Anna</option>
+      <option value="Marco">Marco</option>
+    </select>
+    <label>Note</label>
+    <input type="text" id="modalNote" placeholder="es. cambia lenzuola Camera Verde">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Annulla</button>
+      <button class="btn-delete" id="btnDelete" onclick="deletePulizia()" style="display:none">Elimina</button>
+      <button class="btn-save" onclick="savePulizia()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = "1kwUIGJKXYGkLSD97zaL-vnf2cVjjK3Hv7OnUYYCDHzE";
+const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+let curYear = new Date().getFullYear();
+let curMonth = new Date().getMonth();
+let prenotazioni = [];
+let pulizie = [];
+let modalDate = null;
+let editingPuliziaIdx = -1;
+
+async function loadData() {
+  document.getElementById("syncStatus").textContent = "Aggiornamento...";
+  try {
+    const baseUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=`;
+    
+    const [rPren, rPul] = await Promise.all([
+      fetch(baseUrl + "Prenotazioni").then(r => r.text()),
+      fetch(baseUrl + "Pulizie").then(r => r.text())
+    ]);
+
+    prenotazioni = parseSheet(rPren);
+    pulizie = parseSheet(rPul);
+
+    renderCalendar();
+    const now = new Date();
+    document.getElementById("syncStatus").textContent = `Aggiornato alle ${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`;
+  } catch(e) {
+    document.getElementById("syncStatus").textContent = "Errore caricamento";
+    console.error(e);
+  }
+}
+
+function parseSheet(raw) {
+  const json = JSON.parse(raw.replace(/^[^{]+/, "").replace(/;$/, ""));
+  const rows = json.table.rows || [];
+  return rows.map(row => row.c.map(c => c ? (c.v !== null && c.v !== undefined ? String(c.v) : "") : ""));
+}
+
+function ds(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const parts = str.split("/");
+  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  return null;
+}
+
+function getPrenotazioniForDate(dateStr) {
+  return prenotazioni.filter(r => {
+    const ci = parseDate(r[1]);
+    const co = parseDate(r[2]);
+    return ci === dateStr || co === dateStr;
+  });
+}
+
+function isFullDay(dateStr) {
+  return prenotazioni.some(r => {
+    const ci = parseDate(r[1]);
+    const co = parseDate(r[2]);
+    if (!ci || !co) return false;
+    const d = new Date(dateStr);
+    const start = new Date(ci);
+    const end = new Date(co);
+    return d > start && d < end;
+  });
+}
+
+function getPulizia(dateStr) {
+  return pulizie.find(r => parseDate(r[0]) === dateStr);
+}
+
+function getPuliziaIdx(dateStr) {
+  return pulizie.findIndex(r => parseDate(r[0]) === dateStr);
+}
+
+function renderCell(dateStr) {
+  const full = isFullDay(dateStr);
+  const prenList = getPrenotazioniForDate(dateStr);
+  const pulizia = getPulizia(dateStr);
+  
+  const checkout = prenList.find(r => parseDate(r[2]) === dateStr);
+  const checkin = prenList.find(r => parseDate(r[1]) === dateStr);
+
+  if (full) {
+    const pren = prenotazioni.find(r => {
+      const ci = parseDate(r[1]);
+      const co = parseDate(r[2]);
+      const d = new Date(dateStr);
+      return d > new Date(ci) && d < new Date(co);
+    });
+    const guests = pren && pren[3] ? pren[3] : "";
+    return `
+      <div class="sub sub-full"><span class="sub-name">${guests ? guests+" osp." : "Occupato"}</span></div>
+      <div class="sub sub-full-clean" onclick="openModal('${dateStr}')"><span class="sub-name">${pulizia && pulizia[2] ? pulizia[2] : "+"}</span></div>
+      <div class="sub sub-full"><span class="sub-name"></span></div>`;
+  }
+
+  const outHtml = checkout
+    ? `<div class="sub sub-out" onclick="openModal('${dateStr}')">
+        <span class="sub-name">Check-out</span>
+        ${checkout[3] ? `<span class="sub-guests">${checkout[3]} osp.</span>` : ""}
+      </div>`
+    : `<div class="sub sub-empty"></div>`;
+
+  const cleanHtml = pulizia
+    ? `<div class="sub sub-clean" onclick="openModal('${dateStr}')">
+        <span class="sub-name">${pulizia[2] || "?"}</span>
+        <span class="sub-type">${pulizia[1] || ""}</span>
+      </div>`
+    : `<div class="sub sub-empty" onclick="openModal('${dateStr}')" style="cursor:pointer;" title="Aggiungi pulizia">
+        <span style="font-size:16px;color:#ccc;">+</span>
+      </div>`;
+
+  const inHtml = checkin
+    ? `<div class="sub sub-in">
+        <span class="sub-name">Check-in</span>
+        ${checkin[3] ? `<span class="sub-guests">${checkin[3]} osp.</span>` : ""}
+      </div>`
+    : `<div class="sub sub-empty"></div>`;
+
+  return outHtml + cleanHtml + inHtml;
+}
+
+function renderCalendar() {
+  document.getElementById("monthLabel").textContent = MONTHS[curMonth] + " " + curYear;
+  const today = new Date();
+  const firstDay = new Date(curYear, curMonth, 1);
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  let startOffset = firstDay.getDay() - 1;
+  if (startOffset < 0) startOffset = 6;
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  let html = "", week = "", dayCount = 0;
+
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    const isValid = dayNum >= 1 && dayNum <= daysInMonth;
+    const dateStr = isValid ? ds(curYear, curMonth, dayNum) : "";
+    const isToday = isValid && today.getDate()===dayNum && today.getMonth()===curMonth && today.getFullYear()===curYear;
+
+    if (isValid) {
+      const numHtml = isToday
+        ? `<span class="day-num today-num">${dayNum}</span>`
+        : `<span class="day-num">${dayNum}</span>`;
+      week += `<div class="day-cell${isToday?" today-cell":""}">
+        <div class="day-num-row">${numHtml}</div>
+        <div class="sub-cells">${renderCell(dateStr)}</div>
+      </div>`;
+    } else {
+      week += `<div class="day-cell empty"></div>`;
+    }
+
+    dayCount++;
+    if (dayCount === 7) {
+      html += `<div class="week-row">${week}</div>`;
+      week = ""; dayCount = 0;
+    }
+  }
+
+  document.getElementById("weeksGrid").innerHTML = html;
+}
+
+function changeMonth(dir) {
+  curMonth += dir;
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  if (curMonth < 0) { curMonth = 11; curYear--; }
+  renderCalendar();
+}
+
+function openModal(dateStr) {
+  modalDate = dateStr;
+  const parts = dateStr.split("-");
+  document.getElementById("modalDate").textContent = `${parts[2]}/${parts[1]}/${parts[0]}`;
+  
+  const idx = getPuliziaIdx(dateStr);
+  editingPuliziaIdx = idx;
+
+  if (idx >= 0) {
+    document.getElementById("modalTitle").textContent = "Modifica pulizia";
+    document.getElementById("modalTipo").value = pulizie[idx][1] || "Finale";
+    document.getElementById("modalChi").value = pulizie[idx][2] || "";
+    document.getElementById("modalNote").value = pulizie[idx][4] || "";
+    document.getElementById("btnDelete").style.display = "block";
+  } else {
+    document.getElementById("modalTitle").textContent = "Aggiungi pulizia";
+    document.getElementById("modalTipo").value = "Finale";
+    document.getElementById("modalChi").value = "";
+    document.getElementById("modalNote").value = "";
+    document.getElementById("btnDelete").style.display = "none";
+  }
+
+  document.getElementById("modalOverlay").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+}
+
+function savePulizia() {
+  const tipo = document.getElementById("modalTipo").value;
+  const chi = document.getElementById("modalChi").value;
+  const note = document.getElementById("modalNote").value;
+  const parts = modalDate.split("-");
+  const dateFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+
+  if (editingPuliziaIdx >= 0) {
+    pulizie[editingPuliziaIdx] = [dateFormatted, tipo, chi, "", note];
+  } else {
+    pulizie.push([dateFormatted, tipo, chi, "", note]);
+  }
+
+  closeModal();
+  renderCalendar();
+  showToast("Pulizia salvata. Ricorda di aggiornare anche il Google Sheet.");
+}
+
+function deletePulizia() {
+  if (editingPuliziaIdx >= 0) {
+    pulizie.splice(editingPuliziaIdx, 1);
+    closeModal();
+    renderCalendar();
+    showToast("Pulizia eliminata. Ricorda di aggiornare anche il Google Sheet.");
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement("div");
+  t.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:999;max-width:300px;text-align:center;";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+document.getElementById("modalOverlay").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+
+loadData();
+</script>
+</body>
+</html>
