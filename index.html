@@ -1,4 +1,4 @@
-<!-- BOLO APARTMENT CALENDAR v1.2
+<!-- BOLO APARTMENT CALENDAR v1.3
      Modifiche rispetto a v1.1:
      - Rimossa la logica settimana su mobile
      - Mese intero sempre visibile su tutti i dispositivi
@@ -164,10 +164,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A</div>
   <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B</div>
   <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia da fare</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Maria</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Anna</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#C62828;"></div> Marco</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#37474F;"></div> Straordinaria</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Erica</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Manu</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C62828;"></div> Sello</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#000;border:2px solid #555;"></div> ★ Straordinaria (bordo nero)</div>
 </div>
 
 <!-- MODAL PULIZIE -->
@@ -184,9 +184,9 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <label>Chi pulisce</label>
     <select id="pulChi">
       <option value="">— seleziona —</option>
-      <option value="Maria">Maria</option>
-      <option value="Anna">Anna</option>
-      <option value="Marco">Marco</option>
+      <option value="Erica">Erica</option>
+      <option value="Manu">Manu</option>
+      <option value="Sello">Sello</option>
     </select>
     <label>Note</label>
     <input type="text" id="pulNote" placeholder="es. cambia lenzuola camera verde">
@@ -225,7 +225,7 @@ const BASE_URL = `https://opensheet.elk.sh/${SHEET_ID}/`;
 const APPS_SCRIPT_URL = "INSERISCI_QUI_URL_APPS_SCRIPT";
 
 // Mappa nome → classe CSS colore. Aggiorna se cambi i nomi nel select.
-const CLEANER_CSS = { "Maria":"sub-clean-1", "Anna":"sub-clean-2", "Marco":"sub-clean-3" };
+const CLEANER_CSS = { "Erica":"sub-clean-1", "Manu":"sub-clean-2", "Sello":"sub-clean-3" };
 
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                 "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
@@ -319,16 +319,12 @@ function renderSubCells(k) {
   // PULIZIE
   let clean;
   if(pulizia){
-    if(pulizia.tipo==="Straordinaria"){
-      clean=`<div class="sub sub-clean-extra" onclick="openModalPulizia('${k}',false)">
-        <span class="sub-name">${pulizia.chi||"Straord."}</span>
-        <span class="sub-detail">Straord.</span></div>`;
-    } else {
-      const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
-      clean=`<div class="sub ${cls}" onclick="openModalPulizia('${k}',false)">
-        <span class="sub-name">${pulizia.chi||"—"}</span>
-        <span class="sub-detail">${pulizia.tipo||""}</span></div>`;
-    }
+    // Colore sempre per persona, bordo top nero se straordinaria
+    const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
+    const extraStyle=pulizia.tipo==="Straordinaria"?"border-top:3px solid #000!important;":"";
+    clean=`<div class="sub ${cls}" style="${extraStyle}" onclick="openModalPulizia('${k}',false)">
+      <span class="sub-name">${pulizia.chi||"—"}</span>
+      <span class="sub-detail">${pulizia.tipo==="Straordinaria"?"★ Straord.":pulizia.tipo||""}</span></div>`;
   } else if(checkout&&!soppressa.has(k)){
     // Pulizia vergine: solo al check-out, se non soppressa
     clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}',true)">
