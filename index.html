@@ -495,23 +495,4 @@ loadData();
 </script>
 </body>
 </html>
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const action = data.action;
 
-  if (action === "syncNow") {
-    syncAirbnb();
-  } else if (action === "pulizia") {
-    salvaPulizia(data);
-  } else if (action === "deletePulizia") {
-    eliminaPulizia(data.id);
-  } else if (action === "prenotazione") {
-    salvaPrenotazione(data);
-  }
-
-  return ContentService.createTextOutput("ok");
-}
-
-function doGet(e) {
-  return ContentService.createTextOutput("Bolo Apartment API ok");
-}
