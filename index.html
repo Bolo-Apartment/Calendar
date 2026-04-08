@@ -1,9 +1,8 @@
-<!-- BOLO APARTMENT CALENDAR v1.1
-     Modifiche rispetto a v1.0:
-     - Riga prenotazione continua (tutti i giorni del soggiorno colorati)
-     - Pulizia automatica solo al check-out (non al check-in)
-     - Pulizia vergine eliminabile dal banner
-     - Versioning aggiunto
+<!-- BOLO APARTMENT CALENDAR v1.2
+     Modifiche rispetto a v1.1:
+     - Rimossa la logica settimana su mobile
+     - Mese intero sempre visibile su tutti i dispositivi
+     - Celle a dimensione minima fissa, testo troncato
 -->
 <!DOCTYPE html>
 <html lang="it">
@@ -13,19 +12,13 @@
 <title>Bolo Apartment — Calendario</title>
 <style>
 :root {
-  /* Prenotazione A: blu */
   --pren-a-bg:#1565C0; --pren-a-light:#BBDEFB; --pren-a-text:#fff; --pren-a-label:#0D47A1;
-  /* Prenotazione B: arancio */
   --pren-b-bg:#E65100; --pren-b-light:#FFE0B2; --pren-b-text:#fff; --pren-b-label:#BF360C;
-  /* Pulizia da fare: giallo */
   --clean-todo-bg:#F9A825; --clean-todo-text:#4E2C00;
-  /* Pulizie per persona */
-  --clean-1-bg:#00897B; --clean-1-text:#fff;  /* Maria: verde acqua */
-  --clean-2-bg:#6A1B9A; --clean-2-text:#fff;  /* Anna: viola */
-  --clean-3-bg:#C62828; --clean-3-text:#fff;  /* Marco: rosso */
-  /* Straordinaria */
+  --clean-1-bg:#00897B; --clean-1-text:#fff;
+  --clean-2-bg:#6A1B9A; --clean-2-text:#fff;
+  --clean-3-bg:#C62828; --clean-3-text:#fff;
   --clean-extra-bg:#37474F; --clean-extra-text:#fff;
-  /* UI */
   --accent:#C07A3A; --accent-dark:#A06030;
   --bg:#F5F3EE; --surface:#fff; --border:#D8D4CC; --text:#2C2C2A; --muted:#888880;
 }
@@ -33,50 +26,52 @@
 body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);}
 
 /* HEADER */
-header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px;}
-.logo{font-size:17px;font-weight:bold;white-space:nowrap;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px;}
+.logo{font-size:15px;font-weight:bold;white-space:nowrap;}
 .logo span{color:var(--accent);}
-.nav-controls{display:flex;align-items:center;gap:6px;}
-.nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:16px;cursor:pointer;color:var(--muted);}
+.nav-controls{display:flex;align-items:center;gap:4px;}
+.nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:15px;cursor:pointer;color:var(--muted);}
 .nav-btn:hover{background:var(--bg);}
-.month-label{font-size:14px;font-weight:bold;min-width:140px;text-align:center;}
+.month-label{font-size:13px;font-weight:bold;min-width:120px;text-align:center;}
 
 /* TOOLBAR */
-.toolbar{background:var(--surface);padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.sync-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit;}
+.toolbar{background:var(--surface);padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.sync-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
 .sync-btn:hover{background:var(--accent-dark);}
-.print-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--muted);font-family:inherit;}
+.print-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;color:var(--muted);font-family:inherit;}
 .print-btn:hover{background:var(--bg);}
-.sync-status{font-size:12px;color:var(--muted);}
+.sync-status{font-size:11px;color:var(--muted);}
 
-/* GRIGLIA */
-.cal-wrap{padding:12px;}
-.day-headers{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:3px;}
-.day-header{text-align:center;font-size:11px;font-weight:bold;color:var(--muted);padding:4px 0;letter-spacing:.06em;}
-.weeks{display:flex;flex-direction:column;gap:3px;}
-.week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
+/* GRIGLIA — sempre scroll orizzontale se necessario */
+.cal-wrap{padding:8px;overflow-x:auto;}
+.cal-inner{min-width:420px;} /* larghezza minima garantita */
+
+.day-headers{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;margin-bottom:2px;}
+.day-header{text-align:center;font-size:10px;font-weight:bold;color:var(--muted);padding:3px 0;letter-spacing:.04em;}
+.weeks{display:flex;flex-direction:column;gap:2px;}
+.week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;}
 
 /* CELLA GIORNO */
-.day-cell{border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:82px;background:var(--surface);}
+.day-cell{border:1px solid var(--border);border-radius:5px;overflow:hidden;background:var(--surface);}
 .day-cell.empty{background:var(--bg);opacity:.35;}
 .day-cell.today-cell{border:2px solid var(--accent);}
-.day-num-row{display:flex;align-items:center;justify-content:center;padding:3px 0;border-bottom:1px solid var(--border);background:#FAFAF7;}
-.day-num{font-size:11px;font-weight:bold;color:var(--muted);}
-.day-num.today-num{background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;}
+.day-num-row{display:flex;align-items:center;justify-content:center;padding:2px 0;border-bottom:1px solid var(--border);background:#FAFAF7;}
+.day-num{font-size:10px;font-weight:bold;color:var(--muted);}
+.day-num.today-num{background:var(--accent);color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;}
 
-/* SOTTO-CELLE */
-.sub-cells{display:grid;grid-template-columns:1fr 1fr 1fr;height:calc(100% - 22px);}
-.sub{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 1px;text-align:center;min-height:60px;border-right:1px solid var(--border);cursor:pointer;overflow:hidden;}
+/* SOTTO-CELLE — altezza fissa, testo sempre troncato */
+.sub-cells{display:grid;grid-template-columns:1fr 1fr 1fr;}
+.sub{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1px;text-align:center;height:48px;border-right:1px solid var(--border);cursor:pointer;overflow:hidden;}
 .sub:last-child{border-right:none;}
 .sub:hover{filter:brightness(.9);}
-.sub-name{font-size:8px;font-weight:bold;display:block;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;padding:0 1px;}
-.sub-detail{font-size:7px;display:block;margin-top:1px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+.sub-name{font-size:7px;font-weight:bold;display:block;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;padding:0 1px;}
+.sub-detail{font-size:6px;display:block;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;padding:0 1px;}
 
 .sub-empty{background:#FAFAF7;}
 .sub-empty:hover{background:#EFEDE8;}
-.sub-plus{color:#CCC;font-size:14px;}
+.sub-plus{color:#CCC;font-size:12px;}
 
-/* Prenotazione: celle check-in e check-out (colore pieno) */
+/* Prenotazione piena */
 .sub-checkout-a,.sub-checkin-a{background:var(--pren-a-bg)!important;border-top:3px solid var(--pren-a-label);}
 .sub-checkout-a .sub-name,.sub-checkin-a .sub-name,
 .sub-checkout-a .sub-detail,.sub-checkin-a .sub-detail{color:var(--pren-a-text);}
@@ -84,7 +79,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sub-checkout-b .sub-name,.sub-checkin-b .sub-name,
 .sub-checkout-b .sub-detail,.sub-checkin-b .sub-detail{color:var(--pren-b-text);}
 
-/* Soggiorno in corso: sfondo chiaro (continuità visiva) */
+/* Soggiorno in corso */
 .sub-stay-a{background:var(--pren-a-light)!important;border-top:3px solid var(--pren-a-bg);}
 .sub-stay-b{background:var(--pren-b-light)!important;border-top:3px solid var(--pren-b-bg);}
 
@@ -101,50 +96,38 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sub-clean-extra .sub-name,.sub-clean-extra .sub-detail{color:var(--clean-extra-text);}
 
 /* LEGENDA */
-.legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px 16px;background:var(--surface);border-top:1px solid var(--border);margin-top:8px;}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
-.legend-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;background:var(--surface);border-top:1px solid var(--border);margin-top:6px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);}
+.legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
-.modal h3{font-size:17px;font-weight:bold;margin-bottom:3px;}
-.modal-date{font-size:13px;color:var(--muted);margin-bottom:16px;font-family:sans-serif;}
-.modal label{font-size:11px;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;}
+.modal{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal h3{font-size:16px;font-weight:bold;margin-bottom:3px;}
+.modal-date{font-size:12px;color:var(--muted);margin-bottom:14px;font-family:sans-serif;}
+.modal label{font-size:11px;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.04em;}
 .modal select,.modal input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:12px;font-family:sans-serif;color:var(--text);background:var(--surface);}
-.modal-btns{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
-.btn-save{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:bold;min-width:80px;}
+.modal-btns{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;}
+.btn-save{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:bold;}
 .btn-save:hover{background:var(--accent-dark);}
 .btn-delete{background:#C62828;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
 .btn-delete:hover{background:#B71C1C;}
 .btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
 
 /* TOAST */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:999;max-width:320px;text-align:center;font-family:sans-serif;animation:fadeIn .2s ease;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:999;max-width:300px;text-align:center;font-family:sans-serif;animation:fadeIn .2s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
 
-/* MOBILE */
-.week-nav{display:none;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;color:var(--muted);font-family:sans-serif;}
-.week-nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:15px;cursor:pointer;color:var(--muted);}
-@media(max-width:700px){
-  .week-nav{display:flex;}
-  .week-row{display:none;}
-  .week-row.visible{display:grid;}
-  .print-btn{display:none!important;}
-  .day-cell{min-height:72px;}
-  .sub{min-height:50px;}
-  .sub-name{font-size:7px;}
-  .sub-detail{font-size:6px;}
-  .month-label{font-size:12px;min-width:90px;}
-}
+/* STAMPA */
 @media print{
-  header,.toolbar,.legend,.week-nav{display:none!important;}
-  .cal-wrap{padding:0;}
-  .week-row{display:grid!important;page-break-inside:avoid;}
+  header,.toolbar,.legend{display:none!important;}
+  .cal-wrap{padding:0;overflow:visible;}
+  .cal-inner{min-width:0;}
   body{background:#fff;}
-  .day-cell{min-height:60px;border:1px solid #999;}
+  .day-cell{border:1px solid #999;}
 }
+
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;font-family:sans-serif;}
 </style>
 </head>
@@ -153,17 +136,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <header>
   <div class="logo">Bolo <span>Apartment</span></div>
   <div class="nav-controls">
-    <button class="nav-btn" onclick="changePeriod(-1)">&#8249;</button>
-    <span class="month-label" id="periodLabel">—</span>
-    <button class="nav-btn" onclick="changePeriod(1)">&#8250;</button>
+    <button class="nav-btn" onclick="changeMonth(-1)">&#8249;</button>
+    <span class="month-label" id="monthLabel">—</span>
+    <button class="nav-btn" onclick="changeMonth(1)">&#8250;</button>
   </div>
 </header>
-
-<div class="week-nav" id="weekNav">
-  <button class="week-nav-btn" onclick="changePeriod(-1)">&#8249;</button>
-  <span id="weekLabel"></span>
-  <button class="week-nav-btn" onclick="changePeriod(1)">&#8250;</button>
-</div>
 
 <div class="toolbar">
   <button class="sync-btn" onclick="loadData()">&#8635; Aggiorna</button>
@@ -172,18 +149,20 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 </div>
 
 <div class="cal-wrap">
-  <div class="day-headers">
-    <div class="day-header">LUN</div><div class="day-header">MAR</div>
-    <div class="day-header">MER</div><div class="day-header">GIO</div>
-    <div class="day-header">VEN</div><div class="day-header">SAB</div>
-    <div class="day-header">DOM</div>
+  <div class="cal-inner">
+    <div class="day-headers">
+      <div class="day-header">LUN</div><div class="day-header">MAR</div>
+      <div class="day-header">MER</div><div class="day-header">GIO</div>
+      <div class="day-header">VEN</div><div class="day-header">SAB</div>
+      <div class="day-header">DOM</div>
+    </div>
+    <div class="weeks" id="weeksGrid"><div class="loading">Caricamento...</div></div>
   </div>
-  <div class="weeks" id="weeksGrid"><div class="loading">Caricamento prenotazioni...</div></div>
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A (blu)</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B (arancio)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B</div>
   <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia da fare</div>
   <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Maria</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Anna</div>
@@ -201,7 +180,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
       <option value="Iniziale">Iniziale (prepara per nuovi ospiti)</option>
       <option value="Straordinaria">Straordinaria (a metà soggiorno)</option>
     </select>
-    <!-- Per cambiare i nomi: modifica qui e aggiorna CLEANER_CSS nel JS -->
+    <!-- Modifica nomi qui e in CLEANER_CSS nel JS -->
     <label>Chi pulisce</label>
     <select id="pulChi">
       <option value="">— seleziona —</option>
@@ -213,8 +192,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <input type="text" id="pulNote" placeholder="es. cambia lenzuola camera verde">
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modalPulizie')">Annulla</button>
-      <!-- Elimina sempre visibile: rimuove pulizia compilata O sopprime la vergine -->
-      <button class="btn-delete" id="pulBtnDelete" onclick="deletePulizia()">🗑 Elimina</button>
+      <button class="btn-delete" onclick="deletePulizia()">🗑 Elimina</button>
       <button class="btn-save" onclick="savePulizia()">Salva</button>
     </div>
   </div>
@@ -241,56 +219,42 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <script>
 // ============================================================
 //  CONFIGURAZIONE
-//  SHEET_ID: ID del Google Sheet
-//  APPS_SCRIPT_URL: URL dello script per scrittura (da configurare)
-//  CLEANER_CSS: mappa nome → classe colore pulizia
 // ============================================================
 const SHEET_ID = "1kwUIGJKXYGkLSD97zaL-vnf2cVjjK3Hv7OnUYYCDHzE";
 const BASE_URL = `https://opensheet.elk.sh/${SHEET_ID}/`;
 const APPS_SCRIPT_URL = "INSERISCI_QUI_URL_APPS_SCRIPT";
 
-// Aggiorna se cambi i nomi nel select sopra
+// Mappa nome → classe CSS colore. Aggiorna se cambi i nomi nel select.
 const CLEANER_CSS = { "Maria":"sub-clean-1", "Anna":"sub-clean-2", "Marco":"sub-clean-3" };
 
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                 "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 // ============================================================
-//  STATO GLOBALE
+//  STATO
 // ============================================================
-let curYear=new Date().getFullYear(), curMonth=new Date().getMonth(), curWeek=0;
-let isMobile=window.innerWidth<=700;
+let curYear=new Date().getFullYear(), curMonth=new Date().getMonth();
 let prenotazioni=[], pulizie=[], soppressa=new Set();
-// soppressa: set di date-chiave dove la pulizia vergine è stata eliminata dall'utente
-
 let modalPrenId=null, modalPulKey=null, editPulIdx=-1, modalPulIsVergine=false;
 
 // ============================================================
-//  CARICAMENTO DATI DA GOOGLE SHEETS
+//  CARICAMENTO DATI
 // ============================================================
 async function loadData() {
   document.getElementById("syncStatus").textContent="Aggiornamento...";
   try {
-    const [rP,rC] = await Promise.all([
+    const [rP,rC]=await Promise.all([
       fetch(BASE_URL+"Prenotazioni").then(r=>r.json()),
       fetch(BASE_URL+"Pulizie").then(r=>r.json())
     ]);
-
-    prenotazioni = (rP||[]).map(r=>({
-      id:      r["ID"]       || "",
-      checkIn: r["CheckIn"]  || "",
-      checkOut:r["CheckOut"] || "",
-      ospiti:  r["Ospiti"]   || "",
-      note:    r["Note"]     || "",
-      nome:    r["Nome"]     || ""
+    prenotazioni=(rP||[]).map(r=>({
+      id:r["ID"]||"", checkIn:r["CheckIn"]||"", checkOut:r["CheckOut"]||"",
+      ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||""
     })).filter(r=>r.id&&r.checkIn&&r.checkOut);
 
-    pulizie = (rC||[]).map(r=>({
-      data:   r["DataPulizia"]    || "",
-      tipo:   r["TipoPulizia"]    || "",
-      chi:    r["ChiPulisce"]     || "",
-      idPren: r["IDPrenotazione"] || "",
-      note:   r["Note"]           || ""
+    pulizie=(rC||[]).map(r=>({
+      data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
+      chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
     })).filter(r=>r.data);
 
     assignColors();
@@ -306,160 +270,112 @@ async function loadData() {
 
 // ============================================================
 //  COLORI ALTERNATI
-//  Ordina prenotazioni per check-in e alterna A/B
 // ============================================================
 function assignColors() {
-  [...prenotazioni]
-    .sort((a,b)=>toDate(a.checkIn)-toDate(b.checkIn))
-    .forEach((p,i)=>{ p.colorClass = i%2===0 ? "a" : "b"; });
+  [...prenotazioni].sort((a,b)=>toDate(a.checkIn)-toDate(b.checkIn))
+    .forEach((p,i)=>{ p.colorClass=i%2===0?"a":"b"; });
 }
 
 // ============================================================
 //  UTILITY DATE
-//  Formato Sheet: dd/mm/yyyy
-//  Chiave interna: yyyy-mm-dd
 // ============================================================
-function toDate(s) {
-  if(!s) return null;
-  const [d,m,y]=s.split("/");
-  return new Date(`${y}-${m}-${d}`);
-}
-function dateToKey(y,m,d) {
-  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-}
-function ddmmToKey(s) {
-  if(!s) return null;
-  const [d,m,y]=s.split("/");
-  return `${y}-${m}-${d}`;
-}
-function keyToDdmm(k) {
-  const [y,m,d]=k.split("-");
-  return `${d}/${m}/${y}`;
-}
+function toDate(s){ if(!s)return null; const[d,m,y]=s.split("/"); return new Date(`${y}-${m}-${d}`); }
+function dateToKey(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+function ddmmToKey(s){ if(!s)return null; const[d,m,y]=s.split("/"); return `${y}-${m}-${d}`; }
+function keyToDdmm(k){ const[y,m,d]=k.split("-"); return `${d}/${m}/${y}`; }
 
 // ============================================================
-//  LOOKUP PRENOTAZIONI E PULIZIE
+//  LOOKUP
 // ============================================================
-function prenByCheckout(k) { return prenotazioni.find(p=>ddmmToKey(p.checkOut)===k); }
-function prenByCheckin(k)  { return prenotazioni.find(p=>ddmmToKey(p.checkIn)===k); }
-
-// Prenotazione in corso (giorno compreso tra ci e co, esclusi i bordi)
-function prenDuringStay(k) {
+function prenByCheckout(k){ return prenotazioni.find(p=>ddmmToKey(p.checkOut)===k); }
+function prenByCheckin(k) { return prenotazioni.find(p=>ddmmToKey(p.checkIn)===k); }
+function prenDuringStay(k){
   const d=new Date(k);
   return prenotazioni.find(p=>{
-    const ci=toDate(p.checkIn), co=toDate(p.checkOut);
+    const ci=toDate(p.checkIn),co=toDate(p.checkOut);
     return ci&&co&&d>ci&&d<co;
   });
 }
-
-function getPulizia(k)    { return pulizie.find(p=>ddmmToKey(p.data)===k); }
-function getPuliziaIdx(k) { return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
+function getPulizia(k)   { return pulizie.find(p=>ddmmToKey(p.data)===k); }
+function getPuliziaIdx(k){ return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
 
 // ============================================================
-//  RENDER SOTTO-CELLE PER UN GIORNO
+//  RENDER SOTTO-CELLE
 // ============================================================
 function renderSubCells(k) {
-  const checkout = prenByCheckout(k);
-  const checkin  = prenByCheckin(k);
-  const staying  = prenDuringStay(k);
-  const pulizia  = getPulizia(k);
+  const checkout=prenByCheckout(k), checkin=prenByCheckin(k);
+  const staying=prenDuringStay(k), pulizia=getPulizia(k);
 
-  // --- CHECK-OUT: colore pieno se c'è checkout, chiaro se soggiorno in corso ---
-  let out;
-  if (checkout) {
-    const c=checkout.colorClass;
-    out=`<div class="sub sub-checkout-${c}" onclick="openModalPren('${checkout.id}')">
-      <span class="sub-name">${checkout.nome||"Ospite"}</span>
-      ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
-    </div>`;
-  } else if (staying) {
-    out=`<div class="sub sub-stay-${staying.colorClass}"></div>`;
-  } else {
-    out=`<div class="sub sub-empty"></div>`;
-  }
+  // CHECK-OUT
+  let out=checkout
+    ?`<div class="sub sub-checkout-${checkout.colorClass}" onclick="openModalPren('${checkout.id}')">
+        <span class="sub-name">${checkout.nome||"Ospite"}</span>
+        ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
+      </div>`
+    :staying
+      ?`<div class="sub sub-stay-${staying.colorClass}"></div>`
+      :`<div class="sub sub-empty"></div>`;
 
-  // --- PULIZIE ---
-  // Regole:
-  // 1. Pulizia compilata → colore persona o straordinaria
-  // 2. Solo check-out (non check-in) → pulizia vergine gialla (se non soppressa)
-  // 3. Soggiorno in corso senza pulizia straordinaria → colore prenotazione (continuità)
-  // 4. Vuoto → + cliccabile
+  // PULIZIE
   let clean;
-  if (pulizia) {
-    // Pulizia compilata
-    if (pulizia.tipo==="Straordinaria") {
+  if(pulizia){
+    if(pulizia.tipo==="Straordinaria"){
       clean=`<div class="sub sub-clean-extra" onclick="openModalPulizia('${k}',false)">
         <span class="sub-name">${pulizia.chi||"Straord."}</span>
-        <span class="sub-detail">Straord.</span>
-      </div>`;
+        <span class="sub-detail">Straord.</span></div>`;
     } else {
       const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
       clean=`<div class="sub ${cls}" onclick="openModalPulizia('${k}',false)">
         <span class="sub-name">${pulizia.chi||"—"}</span>
-        <span class="sub-detail">${pulizia.tipo||""}</span>
-      </div>`;
+        <span class="sub-detail">${pulizia.tipo||""}</span></div>`;
     }
-  } else if (checkout && !soppressa.has(k)) {
-    // Pulizia vergine: solo al check-out, se non soppressa dall'utente
+  } else if(checkout&&!soppressa.has(k)){
+    // Pulizia vergine: solo al check-out, se non soppressa
     clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}',true)">
       <span class="sub-name">Pulizia</span>
-      <span class="sub-detail">da fare ▸</span>
-    </div>`;
-  } else if (staying) {
-    // Soggiorno in corso: stessa tinta della prenotazione per continuità
+      <span class="sub-detail">da fare ▸</span></div>`;
+  } else if(staying){
+    // Soggiorno: continuità colore
     clean=`<div class="sub sub-stay-${staying.colorClass}" onclick="openModalPulizia('${k}',false)">
-      <span class="sub-name" style="opacity:.25">+</span>
-    </div>`;
+      <span class="sub-name" style="opacity:.2">+</span></div>`;
   } else {
     clean=`<div class="sub sub-empty" onclick="openModalPulizia('${k}',false)">
-      <span class="sub-plus">+</span>
-    </div>`;
+      <span class="sub-plus">+</span></div>`;
   }
 
-  // --- CHECK-IN: colore pieno se c'è checkin, chiaro se soggiorno in corso ---
-  let inn;
-  if (checkin) {
-    const c=checkin.colorClass;
-    inn=`<div class="sub sub-checkin-${c}" onclick="openModalPren('${checkin.id}')">
-      <span class="sub-name">${checkin.nome||"Ospite"}</span>
-      ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
-    </div>`;
-  } else if (staying) {
-    inn=`<div class="sub sub-stay-${staying.colorClass}"></div>`;
-  } else {
-    inn=`<div class="sub sub-empty"></div>`;
-  }
+  // CHECK-IN
+  let inn=checkin
+    ?`<div class="sub sub-checkin-${checkin.colorClass}" onclick="openModalPren('${checkin.id}')">
+        <span class="sub-name">${checkin.nome||"Ospite"}</span>
+        ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
+      </div>`
+    :staying
+      ?`<div class="sub sub-stay-${staying.colorClass}"></div>`
+      :`<div class="sub sub-empty"></div>`;
 
   return out+clean+inn;
 }
 
 // ============================================================
-//  RENDER CALENDARIO
+//  RENDER CALENDARIO — sempre mese intero
 // ============================================================
 function renderCalendar() {
-  isMobile=window.innerWidth<=700;
-  document.getElementById("periodLabel").textContent=MONTHS[curMonth]+" "+curYear;
-
+  document.getElementById("monthLabel").textContent=MONTHS[curMonth]+" "+curYear;
   const today=new Date();
   const fd=new Date(curYear,curMonth,1);
   const dim=new Date(curYear,curMonth+1,0).getDate();
   let so=fd.getDay()-1; if(so<0)so=6;
   const total=Math.ceil((so+dim)/7)*7;
-  const weeks=total/7;
-  if(curWeek>=weeks) curWeek=weeks-1;
 
   let html="";
-  for(let w=0;w<weeks;w++){
-    const vis=!isMobile||w===curWeek;
-    html+=`<div class="week-row${vis?" visible":""}">`;
+  for(let i=0;i<total;i+=7){
+    html+=`<div class="week-row">`;
     for(let d=0;d<7;d++){
-      const idx=w*7+d, dn=idx-so+1, valid=dn>=1&&dn<=dim;
+      const dn=i+d-so+1, valid=dn>=1&&dn<=dim;
       if(!valid){html+=`<div class="day-cell empty"></div>`;continue;}
       const k=dateToKey(curYear,curMonth,dn);
       const isT=today.getDate()===dn&&today.getMonth()===curMonth&&today.getFullYear()===curYear;
-      const num=isT
-        ?`<span class="day-num today-num">${dn}</span>`
-        :`<span class="day-num">${dn}</span>`;
+      const num=isT?`<span class="day-num today-num">${dn}</span>`:`<span class="day-num">${dn}</span>`;
       html+=`<div class="day-cell${isT?" today-cell":""}">
         <div class="day-num-row">${num}</div>
         <div class="sub-cells">${renderSubCells(k)}</div>
@@ -468,103 +384,55 @@ function renderCalendar() {
     html+=`</div>`;
   }
   document.getElementById("weeksGrid").innerHTML=html;
-  updateWeekLabel(so,dim);
 }
 
 // ============================================================
-//  NAVIGAZIONE MESE / SETTIMANA
+//  NAVIGAZIONE MESE
 // ============================================================
-function changePeriod(dir) {
-  if(isMobile){
-    const fd=new Date(curYear,curMonth,1);
-    let so=fd.getDay()-1; if(so<0)so=6;
-    const dim=new Date(curYear,curMonth+1,0).getDate();
-    const tw=Math.ceil((so+dim)/7);
-    curWeek+=dir;
-    if(curWeek>=tw){curWeek=0;curMonth++;if(curMonth>11){curMonth=0;curYear++;}}
-    else if(curWeek<0){
-      curMonth--;if(curMonth<0){curMonth=11;curYear--;}
-      const fd2=new Date(curYear,curMonth,1);
-      let so2=fd2.getDay()-1;if(so2<0)so2=6;
-      const dim2=new Date(curYear,curMonth+1,0).getDate();
-      curWeek=Math.ceil((so2+dim2)/7)-1;
-    }
-  } else {
-    curMonth+=dir;
-    if(curMonth>11){curMonth=0;curYear++;}
-    if(curMonth<0){curMonth=11;curYear--;}
-    curWeek=0;
-  }
+function changeMonth(dir){
+  curMonth+=dir;
+  if(curMonth>11){curMonth=0;curYear++;}
+  if(curMonth<0){curMonth=11;curYear--;}
   renderCalendar();
-}
-
-function updateWeekLabel(so,dim){
-  const lbl=document.getElementById("weekLabel");
-  if(!isMobile){lbl.textContent="";return;}
-  const si=curWeek*7;
-  const f=Math.max(1,si-so+1), l=Math.min(dim,si+6-so+1);
-  lbl.textContent=`${f} – ${l} ${MONTHS[curMonth]} ${curYear}`;
 }
 
 // ============================================================
 //  MODAL PULIZIE
-//  isVergine=true: stiamo aprendo una pulizia automatica non compilata
 // ============================================================
-function openModalPulizia(k, isVergine) {
-  modalPulKey=k;
-  modalPulIsVergine=isVergine;
+function openModalPulizia(k,isVergine){
+  modalPulKey=k; modalPulIsVergine=isVergine;
   document.getElementById("pulizieDate").textContent=keyToDdmm(k);
-
-  const idx=getPuliziaIdx(k);
-  editPulIdx=idx;
-
+  const idx=getPuliziaIdx(k); editPulIdx=idx;
   if(idx>=0){
-    // Pulizia compilata: precompila i campi
     document.getElementById("pulTipo").value=pulizie[idx].tipo||"Iniziale";
     document.getElementById("pulChi").value =pulizie[idx].chi ||"";
     document.getElementById("pulNote").value=pulizie[idx].note||"";
   } else {
-    // Vergine o nuova: campi vuoti
     document.getElementById("pulTipo").value="Iniziale";
     document.getElementById("pulChi").value ="";
     document.getElementById("pulNote").value="";
   }
-
-  // Elimina sempre visibile: rimuove compilata O sopprime la vergine
   document.getElementById("modalPulizie").classList.add("open");
 }
 
 async function savePulizia(){
-  const nr={
-    data:   keyToDdmm(modalPulKey),
-    tipo:   document.getElementById("pulTipo").value,
-    chi:    document.getElementById("pulChi").value,
-    idPren: "",
-    note:   document.getElementById("pulNote").value
-  };
-  // Se era soppressa e ora la salviamo, rimuovi dalla lista soppressa
+  const nr={data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
+    chi:document.getElementById("pulChi").value,idPren:"",note:document.getElementById("pulNote").value};
   soppressa.delete(modalPulKey);
-
-  if(editPulIdx>=0) pulizie[editPulIdx]=nr;
-  else pulizie.push(nr);
-
-  closeModal("modalPulizie");
-  renderCalendar();
-  await saveToSheet("pulizia", nr);
+  if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
+  closeModal("modalPulizie"); renderCalendar();
+  await saveToSheet("pulizia",nr);
 }
 
 async function deletePulizia(){
   if(editPulIdx>=0){
-    // Elimina pulizia compilata
     const row=pulizie[editPulIdx];
     pulizie.splice(editPulIdx,1);
     await saveToSheet("deletePulizia",{data:row.data});
   } else if(modalPulIsVergine){
-    // Sopprime la pulizia vergine per questa data
     soppressa.add(modalPulKey);
   }
-  closeModal("modalPulizie");
-  renderCalendar();
+  closeModal("modalPulizie"); renderCalendar();
   showToast("Pulizia rimossa");
 }
 
@@ -574,8 +442,7 @@ async function deletePulizia(){
 function openModalPren(id){
   modalPrenId=id;
   const p=prenotazioni.find(x=>x.id===id); if(!p)return;
-  document.getElementById("prenDate").textContent=
-    `Check-in: ${p.checkIn}  →  Check-out: ${p.checkOut}`;
+  document.getElementById("prenDate").textContent=`Check-in: ${p.checkIn}  →  Check-out: ${p.checkOut}`;
   document.getElementById("prenNome").value  =p.nome  ||"";
   document.getElementById("prenOspiti").value=p.ospiti||"";
   document.getElementById("prenNote").value  =p.note  ||"";
@@ -587,60 +454,38 @@ async function savePrenotazione(){
   p.nome  =document.getElementById("prenNome").value;
   p.ospiti=document.getElementById("prenOspiti").value;
   p.note  =document.getElementById("prenNote").value;
-  closeModal("modalPrenotazione");
-  assignColors();
-  renderCalendar();
+  closeModal("modalPrenotazione"); assignColors(); renderCalendar();
   await saveToSheet("prenotazione",{id:p.id,nome:p.nome,ospiti:p.ospiti,note:p.note});
 }
 
 // ============================================================
-//  SCRITTURA SU GOOGLE SHEET via Apps Script
-//  Configurare APPS_SCRIPT_URL per abilitare il salvataggio permanente
+//  SCRITTURA SU GOOGLE SHEET
 // ============================================================
 async function saveToSheet(action,data){
   if(APPS_SCRIPT_URL==="INSERISCI_QUI_URL_APPS_SCRIPT"){
-    showToast("⚠️ Dati in memoria (Apps Script non configurato)");
-    return;
+    showToast("⚠️ Dati in memoria (Apps Script non configurato)"); return;
   }
   try{
-    await fetch(APPS_SCRIPT_URL,{
-      method:"POST", mode:"no-cors",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({action,...data})
-    });
+    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...data})});
     showToast("✓ Salvato");
-  }catch(e){
-    showToast("Errore salvataggio — riprova");
-    console.error(e);
-  }
+  }catch(e){showToast("Errore salvataggio");console.error(e);}
 }
 
 // ============================================================
 //  UTILITY UI
 // ============================================================
-function closeModal(id){ document.getElementById(id).classList.remove("open"); }
-
+function closeModal(id){document.getElementById(id).classList.remove("open");}
 function showToast(msg){
-  const t=document.createElement("div");
-  t.className="toast"; t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),3500);
+  const t=document.createElement("div");t.className="toast";t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
-
-// Chiudi modal cliccando fuori
 ["modalPulizie","modalPrenotazione"].forEach(id=>{
   document.getElementById(id).addEventListener("click",function(e){
-    if(e.target===this) closeModal(id);
+    if(e.target===this)closeModal(id);
   });
 });
 
-// Ricalcola al resize
-window.addEventListener("resize",()=>{
-  const was=isMobile; isMobile=window.innerWidth<=700;
-  if(was!==isMobile) renderCalendar();
-});
-
-// Avvio
 loadData();
 </script>
 </body>
