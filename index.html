@@ -1,3 +1,10 @@
+<!-- BOLO APARTMENT CALENDAR v1.1
+     Modifiche rispetto a v1.0:
+     - Riga prenotazione continua (tutti i giorni del soggiorno colorati)
+     - Pulizia automatica solo al check-out (non al check-in)
+     - Pulizia vergine eliminabile dal banner
+     - Versioning aggiunto
+-->
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -6,13 +13,19 @@
 <title>Bolo Apartment — Calendario</title>
 <style>
 :root {
+  /* Prenotazione A: blu */
   --pren-a-bg:#1565C0; --pren-a-light:#BBDEFB; --pren-a-text:#fff; --pren-a-label:#0D47A1;
+  /* Prenotazione B: arancio */
   --pren-b-bg:#E65100; --pren-b-light:#FFE0B2; --pren-b-text:#fff; --pren-b-label:#BF360C;
+  /* Pulizia da fare: giallo */
   --clean-todo-bg:#F9A825; --clean-todo-text:#4E2C00;
-  --clean-1-bg:#00897B; --clean-1-text:#fff;
-  --clean-2-bg:#6A1B9A; --clean-2-text:#fff;
-  --clean-3-bg:#C62828; --clean-3-text:#fff;
+  /* Pulizie per persona */
+  --clean-1-bg:#00897B; --clean-1-text:#fff;  /* Maria: verde acqua */
+  --clean-2-bg:#6A1B9A; --clean-2-text:#fff;  /* Anna: viola */
+  --clean-3-bg:#C62828; --clean-3-text:#fff;  /* Marco: rosso */
+  /* Straordinaria */
   --clean-extra-bg:#37474F; --clean-extra-text:#fff;
+  /* UI */
   --accent:#C07A3A; --accent-dark:#A06030;
   --bg:#F5F3EE; --surface:#fff; --border:#D8D4CC; --text:#2C2C2A; --muted:#888880;
 }
@@ -43,7 +56,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .weeks{display:flex;flex-direction:column;gap:3px;}
 .week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
 
-/* CELLA */
+/* CELLA GIORNO */
 .day-cell{border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:82px;background:var(--surface);}
 .day-cell.empty{background:var(--bg);opacity:.35;}
 .day-cell.today-cell{border:2px solid var(--accent);}
@@ -63,7 +76,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sub-empty:hover{background:#EFEDE8;}
 .sub-plus{color:#CCC;font-size:14px;}
 
-/* Prenotazione piena */
+/* Prenotazione: celle check-in e check-out (colore pieno) */
 .sub-checkout-a,.sub-checkin-a{background:var(--pren-a-bg)!important;border-top:3px solid var(--pren-a-label);}
 .sub-checkout-a .sub-name,.sub-checkin-a .sub-name,
 .sub-checkout-a .sub-detail,.sub-checkin-a .sub-detail{color:var(--pren-a-text);}
@@ -71,7 +84,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sub-checkout-b .sub-name,.sub-checkin-b .sub-name,
 .sub-checkout-b .sub-detail,.sub-checkin-b .sub-detail{color:var(--pren-b-text);}
 
-/* Soggiorno in corso */
+/* Soggiorno in corso: sfondo chiaro (continuità visiva) */
 .sub-stay-a{background:var(--pren-a-light)!important;border-top:3px solid var(--pren-a-bg);}
 .sub-stay-b{background:var(--pren-b-light)!important;border-top:3px solid var(--pren-b-bg);}
 
@@ -114,7 +127,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 /* MOBILE */
 .week-nav{display:none;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;color:var(--muted);font-family:sans-serif;}
 .week-nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:15px;cursor:pointer;color:var(--muted);}
-
 @media(max-width:700px){
   .week-nav{display:flex;}
   .week-row{display:none;}
@@ -126,7 +138,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   .sub-detail{font-size:6px;}
   .month-label{font-size:12px;min-width:90px;}
 }
-
 @media print{
   header,.toolbar,.legend,.week-nav{display:none!important;}
   .cal-wrap{padding:0;}
@@ -134,7 +145,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   body{background:#fff;}
   .day-cell{min-height:60px;border:1px solid #999;}
 }
-
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;font-family:sans-serif;}
 </style>
 </head>
@@ -172,8 +182,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A (blu)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B (arancio)</div>
   <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia da fare</div>
   <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Maria</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Anna</div>
@@ -191,7 +201,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
       <option value="Iniziale">Iniziale (prepara per nuovi ospiti)</option>
       <option value="Straordinaria">Straordinaria (a metà soggiorno)</option>
     </select>
-    <!-- Modifica i nomi qui e in CLEANER_CSS nel JS -->
+    <!-- Per cambiare i nomi: modifica qui e aggiorna CLEANER_CSS nel JS -->
     <label>Chi pulisce</label>
     <select id="pulChi">
       <option value="">— seleziona —</option>
@@ -203,7 +213,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <input type="text" id="pulNote" placeholder="es. cambia lenzuola camera verde">
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modalPulizie')">Annulla</button>
-      <button class="btn-delete" id="pulBtnDelete" onclick="deletePulizia()" style="display:none">🗑 Elimina</button>
+      <!-- Elimina sempre visibile: rimuove pulizia compilata O sopprime la vergine -->
+      <button class="btn-delete" id="pulBtnDelete" onclick="deletePulizia()">🗑 Elimina</button>
       <button class="btn-save" onclick="savePulizia()">Salva</button>
     </div>
   </div>
@@ -230,24 +241,29 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 <script>
 // ============================================================
 //  CONFIGURAZIONE
+//  SHEET_ID: ID del Google Sheet
+//  APPS_SCRIPT_URL: URL dello script per scrittura (da configurare)
+//  CLEANER_CSS: mappa nome → classe colore pulizia
 // ============================================================
 const SHEET_ID = "1kwUIGJKXYGkLSD97zaL-vnf2cVjjK3Hv7OnUYYCDHzE";
 const BASE_URL = `https://opensheet.elk.sh/${SHEET_ID}/`;
 const APPS_SCRIPT_URL = "INSERISCI_QUI_URL_APPS_SCRIPT";
 
-// Mappa nome → classe CSS. Aggiorna se cambi i nomi nel select.
+// Aggiorna se cambi i nomi nel select sopra
 const CLEANER_CSS = { "Maria":"sub-clean-1", "Anna":"sub-clean-2", "Marco":"sub-clean-3" };
 
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                 "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 // ============================================================
-//  STATO
+//  STATO GLOBALE
 // ============================================================
 let curYear=new Date().getFullYear(), curMonth=new Date().getMonth(), curWeek=0;
 let isMobile=window.innerWidth<=700;
-let prenotazioni=[], pulizie=[];
-let modalPrenId=null, modalPulKey=null, editPulIdx=-1;
+let prenotazioni=[], pulizie=[], soppressa=new Set();
+// soppressa: set di date-chiave dove la pulizia vergine è stata eliminata dall'utente
+
+let modalPrenId=null, modalPulKey=null, editPulIdx=-1, modalPulIsVergine=false;
 
 // ============================================================
 //  CARICAMENTO DATI DA GOOGLE SHEETS
@@ -255,18 +271,26 @@ let modalPrenId=null, modalPulKey=null, editPulIdx=-1;
 async function loadData() {
   document.getElementById("syncStatus").textContent="Aggiornamento...";
   try {
-    const [rP,rC]=await Promise.all([
+    const [rP,rC] = await Promise.all([
       fetch(BASE_URL+"Prenotazioni").then(r=>r.json()),
       fetch(BASE_URL+"Pulizie").then(r=>r.json())
     ]);
-    prenotazioni=(rP||[]).map(r=>({
-      id:r["ID"]||"", checkIn:r["CheckIn"]||"", checkOut:r["CheckOut"]||"",
-      ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||""
+
+    prenotazioni = (rP||[]).map(r=>({
+      id:      r["ID"]       || "",
+      checkIn: r["CheckIn"]  || "",
+      checkOut:r["CheckOut"] || "",
+      ospiti:  r["Ospiti"]   || "",
+      note:    r["Note"]     || "",
+      nome:    r["Nome"]     || ""
     })).filter(r=>r.id&&r.checkIn&&r.checkOut);
 
-    pulizie=(rC||[]).map(r=>({
-      data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
-      chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
+    pulizie = (rC||[]).map(r=>({
+      data:   r["DataPulizia"]    || "",
+      tipo:   r["TipoPulizia"]    || "",
+      chi:    r["ChiPulisce"]     || "",
+      idPren: r["IDPrenotazione"] || "",
+      note:   r["Note"]           || ""
     })).filter(r=>r.data);
 
     assignColors();
@@ -281,89 +305,130 @@ async function loadData() {
 }
 
 // ============================================================
-//  COLORI ALTERNATI: ordina per check-in e alterna A/B
+//  COLORI ALTERNATI
+//  Ordina prenotazioni per check-in e alterna A/B
 // ============================================================
 function assignColors() {
-  [...prenotazioni].sort((a,b)=>toDate(a.checkIn)-toDate(b.checkIn))
-    .forEach((p,i)=>{ p.colorClass=i%2===0?"a":"b"; });
+  [...prenotazioni]
+    .sort((a,b)=>toDate(a.checkIn)-toDate(b.checkIn))
+    .forEach((p,i)=>{ p.colorClass = i%2===0 ? "a" : "b"; });
 }
 
 // ============================================================
-//  UTILITY DATE (formato Sheet: dd/mm/yyyy, chiave: yyyy-mm-dd)
+//  UTILITY DATE
+//  Formato Sheet: dd/mm/yyyy
+//  Chiave interna: yyyy-mm-dd
 // ============================================================
-function toDate(s){ if(!s)return null; const[d,m,y]=s.split("/"); return new Date(`${y}-${m}-${d}`); }
-function dateToKey(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
-function ddmmToKey(s){ if(!s)return null; const[d,m,y]=s.split("/"); return `${y}-${m}-${d}`; }
-function keyToDdmm(k){ const[y,m,d]=k.split("-"); return `${d}/${m}/${y}`; }
+function toDate(s) {
+  if(!s) return null;
+  const [d,m,y]=s.split("/");
+  return new Date(`${y}-${m}-${d}`);
+}
+function dateToKey(y,m,d) {
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+}
+function ddmmToKey(s) {
+  if(!s) return null;
+  const [d,m,y]=s.split("/");
+  return `${y}-${m}-${d}`;
+}
+function keyToDdmm(k) {
+  const [y,m,d]=k.split("-");
+  return `${d}/${m}/${y}`;
+}
 
 // ============================================================
-//  LOOKUP
+//  LOOKUP PRENOTAZIONI E PULIZIE
 // ============================================================
-function prenByCheckout(k){ return prenotazioni.find(p=>ddmmToKey(p.checkOut)===k); }
-function prenByCheckin(k) { return prenotazioni.find(p=>ddmmToKey(p.checkIn)===k); }
-function prenDuringStay(k){
+function prenByCheckout(k) { return prenotazioni.find(p=>ddmmToKey(p.checkOut)===k); }
+function prenByCheckin(k)  { return prenotazioni.find(p=>ddmmToKey(p.checkIn)===k); }
+
+// Prenotazione in corso (giorno compreso tra ci e co, esclusi i bordi)
+function prenDuringStay(k) {
   const d=new Date(k);
   return prenotazioni.find(p=>{
     const ci=toDate(p.checkIn), co=toDate(p.checkOut);
     return ci&&co&&d>ci&&d<co;
   });
 }
-function getPulizia(k)   { return pulizie.find(p=>ddmmToKey(p.data)===k); }
-function getPuliziaIdx(k){ return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
+
+function getPulizia(k)    { return pulizie.find(p=>ddmmToKey(p.data)===k); }
+function getPuliziaIdx(k) { return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
 
 // ============================================================
-//  RENDER SOTTO-CELLE
+//  RENDER SOTTO-CELLE PER UN GIORNO
 // ============================================================
 function renderSubCells(k) {
-  const checkout=prenByCheckout(k), checkin=prenByCheckin(k);
-  const staying=prenDuringStay(k), pulizia=getPulizia(k);
+  const checkout = prenByCheckout(k);
+  const checkin  = prenByCheckin(k);
+  const staying  = prenDuringStay(k);
+  const pulizia  = getPulizia(k);
 
-  // CHECK-OUT
-  let out = checkout
-    ? `<div class="sub sub-checkout-${checkout.colorClass}" onclick="openModalPren('${checkout.id}')">
-        <span class="sub-name">${checkout.nome||"Ospite"}</span>
-        ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
-       </div>`
-    : staying
-      ? `<div class="sub sub-stay-${staying.colorClass}"></div>`
-      : `<div class="sub sub-empty"></div>`;
-
-  // PULIZIE
-  let clean;
-  if (pulizia) {
-    if (pulizia.tipo==="Straordinaria") {
-      clean=`<div class="sub sub-clean-extra" onclick="openModalPulizia('${k}')">
-        <span class="sub-name">${pulizia.chi||"Straord."}</span>
-        <span class="sub-detail">Straord.</span></div>`;
-    } else {
-      const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
-      clean=`<div class="sub ${cls}" onclick="openModalPulizia('${k}')">
-        <span class="sub-name">${pulizia.chi||"—"}</span>
-        <span class="sub-detail">${pulizia.tipo||""}</span></div>`;
-    }
-  } else if (checkout||checkin) {
-    // Giorno di cambio: pulizia da fare
-    clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}')">
-      <span class="sub-name">Pulizia</span>
-      <span class="sub-detail">da fare ▸</span></div>`;
+  // --- CHECK-OUT: colore pieno se c'è checkout, chiaro se soggiorno in corso ---
+  let out;
+  if (checkout) {
+    const c=checkout.colorClass;
+    out=`<div class="sub sub-checkout-${c}" onclick="openModalPren('${checkout.id}')">
+      <span class="sub-name">${checkout.nome||"Ospite"}</span>
+      ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
+    </div>`;
   } else if (staying) {
-    // Soggiorno in corso: continuità colore
-    clean=`<div class="sub sub-stay-${staying.colorClass}" onclick="openModalPulizia('${k}')">
-      <span class="sub-name" style="opacity:.25">+</span></div>`;
+    out=`<div class="sub sub-stay-${staying.colorClass}"></div>`;
   } else {
-    clean=`<div class="sub sub-empty" onclick="openModalPulizia('${k}')">
-      <span class="sub-plus">+</span></div>`;
+    out=`<div class="sub sub-empty"></div>`;
   }
 
-  // CHECK-IN
-  let inn = checkin
-    ? `<div class="sub sub-checkin-${checkin.colorClass}" onclick="openModalPren('${checkin.id}')">
-        <span class="sub-name">${checkin.nome||"Ospite"}</span>
-        ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
-       </div>`
-    : staying
-      ? `<div class="sub sub-stay-${staying.colorClass}"></div>`
-      : `<div class="sub sub-empty"></div>`;
+  // --- PULIZIE ---
+  // Regole:
+  // 1. Pulizia compilata → colore persona o straordinaria
+  // 2. Solo check-out (non check-in) → pulizia vergine gialla (se non soppressa)
+  // 3. Soggiorno in corso senza pulizia straordinaria → colore prenotazione (continuità)
+  // 4. Vuoto → + cliccabile
+  let clean;
+  if (pulizia) {
+    // Pulizia compilata
+    if (pulizia.tipo==="Straordinaria") {
+      clean=`<div class="sub sub-clean-extra" onclick="openModalPulizia('${k}',false)">
+        <span class="sub-name">${pulizia.chi||"Straord."}</span>
+        <span class="sub-detail">Straord.</span>
+      </div>`;
+    } else {
+      const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
+      clean=`<div class="sub ${cls}" onclick="openModalPulizia('${k}',false)">
+        <span class="sub-name">${pulizia.chi||"—"}</span>
+        <span class="sub-detail">${pulizia.tipo||""}</span>
+      </div>`;
+    }
+  } else if (checkout && !soppressa.has(k)) {
+    // Pulizia vergine: solo al check-out, se non soppressa dall'utente
+    clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}',true)">
+      <span class="sub-name">Pulizia</span>
+      <span class="sub-detail">da fare ▸</span>
+    </div>`;
+  } else if (staying) {
+    // Soggiorno in corso: stessa tinta della prenotazione per continuità
+    clean=`<div class="sub sub-stay-${staying.colorClass}" onclick="openModalPulizia('${k}',false)">
+      <span class="sub-name" style="opacity:.25">+</span>
+    </div>`;
+  } else {
+    clean=`<div class="sub sub-empty" onclick="openModalPulizia('${k}',false)">
+      <span class="sub-plus">+</span>
+    </div>`;
+  }
+
+  // --- CHECK-IN: colore pieno se c'è checkin, chiaro se soggiorno in corso ---
+  let inn;
+  if (checkin) {
+    const c=checkin.colorClass;
+    inn=`<div class="sub sub-checkin-${c}" onclick="openModalPren('${checkin.id}')">
+      <span class="sub-name">${checkin.nome||"Ospite"}</span>
+      ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
+    </div>`;
+  } else if (staying) {
+    inn=`<div class="sub sub-stay-${staying.colorClass}"></div>`;
+  } else {
+    inn=`<div class="sub sub-empty"></div>`;
+  }
 
   return out+clean+inn;
 }
@@ -375,11 +440,13 @@ function renderCalendar() {
   isMobile=window.innerWidth<=700;
   document.getElementById("periodLabel").textContent=MONTHS[curMonth]+" "+curYear;
 
-  const today=new Date(), fd=new Date(curYear,curMonth,1);
+  const today=new Date();
+  const fd=new Date(curYear,curMonth,1);
   const dim=new Date(curYear,curMonth+1,0).getDate();
   let so=fd.getDay()-1; if(so<0)so=6;
-  const total=Math.ceil((so+dim)/7)*7, weeks=total/7;
-  if(curWeek>=weeks)curWeek=weeks-1;
+  const total=Math.ceil((so+dim)/7)*7;
+  const weeks=total/7;
+  if(curWeek>=weeks) curWeek=weeks-1;
 
   let html="";
   for(let w=0;w<weeks;w++){
@@ -390,7 +457,9 @@ function renderCalendar() {
       if(!valid){html+=`<div class="day-cell empty"></div>`;continue;}
       const k=dateToKey(curYear,curMonth,dn);
       const isT=today.getDate()===dn&&today.getMonth()===curMonth&&today.getFullYear()===curYear;
-      const num=isT?`<span class="day-num today-num">${dn}</span>`:`<span class="day-num">${dn}</span>`;
+      const num=isT
+        ?`<span class="day-num today-num">${dn}</span>`
+        :`<span class="day-num">${dn}</span>`;
       html+=`<div class="day-cell${isT?" today-cell":""}">
         <div class="day-num-row">${num}</div>
         <div class="sub-cells">${renderSubCells(k)}</div>
@@ -403,7 +472,7 @@ function renderCalendar() {
 }
 
 // ============================================================
-//  NAVIGAZIONE
+//  NAVIGAZIONE MESE / SETTIMANA
 // ============================================================
 function changePeriod(dir) {
   if(isMobile){
@@ -439,39 +508,64 @@ function updateWeekLabel(so,dim){
 
 // ============================================================
 //  MODAL PULIZIE
+//  isVergine=true: stiamo aprendo una pulizia automatica non compilata
 // ============================================================
-function openModalPulizia(k){
+function openModalPulizia(k, isVergine) {
   modalPulKey=k;
+  modalPulIsVergine=isVergine;
   document.getElementById("pulizieDate").textContent=keyToDdmm(k);
-  const idx=getPuliziaIdx(k); editPulIdx=idx;
+
+  const idx=getPuliziaIdx(k);
+  editPulIdx=idx;
+
   if(idx>=0){
+    // Pulizia compilata: precompila i campi
     document.getElementById("pulTipo").value=pulizie[idx].tipo||"Iniziale";
-    document.getElementById("pulChi").value=pulizie[idx].chi||"";
+    document.getElementById("pulChi").value =pulizie[idx].chi ||"";
     document.getElementById("pulNote").value=pulizie[idx].note||"";
-    document.getElementById("pulBtnDelete").style.display="block";
   } else {
+    // Vergine o nuova: campi vuoti
     document.getElementById("pulTipo").value="Iniziale";
-    document.getElementById("pulChi").value="";
+    document.getElementById("pulChi").value ="";
     document.getElementById("pulNote").value="";
-    document.getElementById("pulBtnDelete").style.display="none";
   }
+
+  // Elimina sempre visibile: rimuove compilata O sopprime la vergine
   document.getElementById("modalPulizie").classList.add("open");
 }
 
 async function savePulizia(){
-  const nr={data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
-    chi:document.getElementById("pulChi").value,idPren:"",note:document.getElementById("pulNote").value};
-  if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
-  closeModal("modalPulizie"); renderCalendar();
-  await saveToSheet("pulizia",nr);
+  const nr={
+    data:   keyToDdmm(modalPulKey),
+    tipo:   document.getElementById("pulTipo").value,
+    chi:    document.getElementById("pulChi").value,
+    idPren: "",
+    note:   document.getElementById("pulNote").value
+  };
+  // Se era soppressa e ora la salviamo, rimuovi dalla lista soppressa
+  soppressa.delete(modalPulKey);
+
+  if(editPulIdx>=0) pulizie[editPulIdx]=nr;
+  else pulizie.push(nr);
+
+  closeModal("modalPulizie");
+  renderCalendar();
+  await saveToSheet("pulizia", nr);
 }
 
 async function deletePulizia(){
-  if(editPulIdx<0)return;
-  const row=pulizie[editPulIdx];
-  pulizie.splice(editPulIdx,1);
-  closeModal("modalPulizie"); renderCalendar();
-  await saveToSheet("deletePulizia",{data:row.data});
+  if(editPulIdx>=0){
+    // Elimina pulizia compilata
+    const row=pulizie[editPulIdx];
+    pulizie.splice(editPulIdx,1);
+    await saveToSheet("deletePulizia",{data:row.data});
+  } else if(modalPulIsVergine){
+    // Sopprime la pulizia vergine per questa data
+    soppressa.add(modalPulKey);
+  }
+  closeModal("modalPulizie");
+  renderCalendar();
+  showToast("Pulizia rimossa");
 }
 
 // ============================================================
@@ -480,52 +574,73 @@ async function deletePulizia(){
 function openModalPren(id){
   modalPrenId=id;
   const p=prenotazioni.find(x=>x.id===id); if(!p)return;
-  document.getElementById("prenDate").textContent=`Check-in: ${p.checkIn}  →  Check-out: ${p.checkOut}`;
-  document.getElementById("prenNome").value=p.nome||"";
+  document.getElementById("prenDate").textContent=
+    `Check-in: ${p.checkIn}  →  Check-out: ${p.checkOut}`;
+  document.getElementById("prenNome").value  =p.nome  ||"";
   document.getElementById("prenOspiti").value=p.ospiti||"";
-  document.getElementById("prenNote").value=p.note||"";
+  document.getElementById("prenNote").value  =p.note  ||"";
   document.getElementById("modalPrenotazione").classList.add("open");
 }
 
 async function savePrenotazione(){
   const p=prenotazioni.find(x=>x.id===modalPrenId); if(!p)return;
-  p.nome=document.getElementById("prenNome").value;
+  p.nome  =document.getElementById("prenNome").value;
   p.ospiti=document.getElementById("prenOspiti").value;
-  p.note=document.getElementById("prenNote").value;
-  closeModal("modalPrenotazione"); assignColors(); renderCalendar();
+  p.note  =document.getElementById("prenNote").value;
+  closeModal("modalPrenotazione");
+  assignColors();
+  renderCalendar();
   await saveToSheet("prenotazione",{id:p.id,nome:p.nome,ospiti:p.ospiti,note:p.note});
 }
 
 // ============================================================
 //  SCRITTURA SU GOOGLE SHEET via Apps Script
+//  Configurare APPS_SCRIPT_URL per abilitare il salvataggio permanente
 // ============================================================
 async function saveToSheet(action,data){
   if(APPS_SCRIPT_URL==="INSERISCI_QUI_URL_APPS_SCRIPT"){
-    showToast("⚠️ Dati in memoria (Apps Script non configurato)"); return;
+    showToast("⚠️ Dati in memoria (Apps Script non configurato)");
+    return;
   }
   try{
-    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",
-      headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...data})});
+    await fetch(APPS_SCRIPT_URL,{
+      method:"POST", mode:"no-cors",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action,...data})
+    });
     showToast("✓ Salvato");
-  }catch(e){showToast("Errore salvataggio");console.error(e);}
+  }catch(e){
+    showToast("Errore salvataggio — riprova");
+    console.error(e);
+  }
 }
 
 // ============================================================
-//  UTILITY
+//  UTILITY UI
 // ============================================================
-function closeModal(id){document.getElementById(id).classList.remove("open");}
+function closeModal(id){ document.getElementById(id).classList.remove("open"); }
+
 function showToast(msg){
-  const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
-  document.body.appendChild(t); setTimeout(()=>t.remove(),3500);
+  const t=document.createElement("div");
+  t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
 }
+
+// Chiudi modal cliccando fuori
 ["modalPulizie","modalPrenotazione"].forEach(id=>{
-  document.getElementById(id).addEventListener("click",function(e){if(e.target===this)closeModal(id);});
+  document.getElementById(id).addEventListener("click",function(e){
+    if(e.target===this) closeModal(id);
+  });
 });
+
+// Ricalcola al resize
 window.addEventListener("resize",()=>{
   const was=isMobile; isMobile=window.innerWidth<=700;
-  if(was!==isMobile)renderCalendar();
+  if(was!==isMobile) renderCalendar();
 });
 
+// Avvio
 loadData();
 </script>
 </body>
