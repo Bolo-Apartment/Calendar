@@ -236,6 +236,11 @@ const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
 let curYear=new Date().getFullYear(), curMonth=new Date().getMonth();
 let prenotazioni=[], pulizie=[], soppressa=new Set();
 let modalPrenId=null, modalPulKey=null, editPulIdx=-1, modalPulIsVergine=false;
+     
+// Genera ID univoco per nuove pulizie: PUL-yyyymmdd-random
+function generatePuliziaId(key) {
+  return "PUL-" + key.replace(/-/g,"") + "-" + Math.random().toString(36).substr(2,4).toUpperCase();
+}
 
 // ============================================================
 //  CARICAMENTO DATI
@@ -253,10 +258,10 @@ async function loadData() {
       ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||""
     })).filter(r=>r.id&&r.checkIn&&r.checkOut);
 
-    pulizie=(rC||[]).map(r=>({
-      data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
-      chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
-    })).filter(r=>r.data);
+   pulizie=(rC||[]).map(r=>({
+       id:r["IDPulizia"]||"", data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
+       chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
+     })).filter(r=>r.data);
 
     assignColors();
     renderCalendar();
@@ -413,7 +418,10 @@ function openModalPulizia(k,isVergine){
 }
 
 async function savePulizia(){
-  const nr={data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
+  const id=editPulIdx>=0&&pulizie[editPulIdx].id
+    ?pulizie[editPulIdx].id
+    :generatePuliziaId(modalPulKey);
+  const nr={id,data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
     chi:document.getElementById("pulChi").value,idPren:"",note:document.getElementById("pulNote").value};
   soppressa.delete(modalPulKey);
   if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
@@ -425,12 +433,12 @@ async function deletePulizia(){
   if(editPulIdx>=0){
     const row=pulizie[editPulIdx];
     pulizie.splice(editPulIdx,1);
-    await saveToSheet("deletePulizia",{data:row.data});
+    await saveToSheet("deletePulizia",row.id);
   } else if(modalPulIsVergine){
     soppressa.add(modalPulKey);
+    showToast("Pulizia rimossa");
   }
   closeModal("modalPulizie"); renderCalendar();
-  showToast("Pulizia rimossa");
 }
 
 // ============================================================
