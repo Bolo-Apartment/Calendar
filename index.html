@@ -4,558 +4,142 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Bolo Apartment — Calendario</title>
-
-<!-- ============================================================
-  BOLO APARTMENT CALENDAR
-  Struttura:
-  - Legge prenotazioni e pulizie da Google Sheets (opensheet.elk.sh)
-  - Scrive su Google Sheets tramite Apps Script Web App
-  - Vista mensile su desktop (7 colonne)
-  - Vista settimanale su mobile (scorri settimana per settimana)
-  - Ogni giorno è diviso in 3 sotto-celle: check-out | pulizie | check-in
-============================================================ -->
-
 <style>
-/* ============================================================
-   VARIABILI GLOBALI E RESET
-============================================================ */
 :root {
-  /* Colori prenotazioni alternati */
-  --pren-a-bg: #FFF3CD;
-  --pren-a-border: #F0A500;
-  --pren-a-text: #7A5200;
+  --pren-a-bg:#1565C0; --pren-a-light:#BBDEFB; --pren-a-text:#fff; --pren-a-label:#0D47A1;
+  --pren-b-bg:#E65100; --pren-b-light:#FFE0B2; --pren-b-text:#fff; --pren-b-label:#BF360C;
+  --clean-todo-bg:#F9A825; --clean-todo-text:#4E2C00;
+  --clean-1-bg:#00897B; --clean-1-text:#fff;
+  --clean-2-bg:#6A1B9A; --clean-2-text:#fff;
+  --clean-3-bg:#C62828; --clean-3-text:#fff;
+  --clean-extra-bg:#37474F; --clean-extra-text:#fff;
+  --accent:#C07A3A; --accent-dark:#A06030;
+  --bg:#F5F3EE; --surface:#fff; --border:#D8D4CC; --text:#2C2C2A; --muted:#888880;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);}
 
-  --pren-b-bg: #FFE0B2;
-  --pren-b-border: #E07800;
-  --pren-b-text: #7A3800;
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:8px;}
+.logo{font-size:17px;font-weight:bold;white-space:nowrap;}
+.logo span{color:var(--accent);}
+.nav-controls{display:flex;align-items:center;gap:6px;}
+.nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:16px;cursor:pointer;color:var(--muted);}
+.nav-btn:hover{background:var(--bg);}
+.month-label{font-size:14px;font-weight:bold;min-width:140px;text-align:center;}
 
-  /* Colori pulizie per persona */
-  --clean-1-bg: #E8F4FD;
-  --clean-1-border: #2196F3;
-  --clean-1-text: #0D47A1;
+/* TOOLBAR */
+.toolbar{background:var(--surface);padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.sync-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit;}
+.sync-btn:hover{background:var(--accent-dark);}
+.print-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--muted);font-family:inherit;}
+.print-btn:hover{background:var(--bg);}
+.sync-status{font-size:12px;color:var(--muted);}
 
-  --clean-2-bg: #F3E5F5;
-  --clean-2-border: #9C27B0;
-  --clean-2-text: #4A148C;
+/* GRIGLIA */
+.cal-wrap{padding:12px;}
+.day-headers{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-bottom:3px;}
+.day-header{text-align:center;font-size:11px;font-weight:bold;color:var(--muted);padding:4px 0;letter-spacing:.06em;}
+.weeks{display:flex;flex-direction:column;gap:3px;}
+.week-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
 
-  --clean-3-bg: #E8F5E9;
-  --clean-3-border: #4CAF50;
-  --clean-3-text: #1B5E20;
+/* CELLA */
+.day-cell{border:1px solid var(--border);border-radius:6px;overflow:hidden;min-height:82px;background:var(--surface);}
+.day-cell.empty{background:var(--bg);opacity:.35;}
+.day-cell.today-cell{border:2px solid var(--accent);}
+.day-num-row{display:flex;align-items:center;justify-content:center;padding:3px 0;border-bottom:1px solid var(--border);background:#FAFAF7;}
+.day-num{font-size:11px;font-weight:bold;color:var(--muted);}
+.day-num.today-num{background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;}
 
-  /* Pulizia da fare (rosso) */
-  --clean-todo-bg: #FFEBEE;
-  --clean-todo-border: #F44336;
-  --clean-todo-text: #B71C1C;
+/* SOTTO-CELLE */
+.sub-cells{display:grid;grid-template-columns:1fr 1fr 1fr;height:calc(100% - 22px);}
+.sub{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px 1px;text-align:center;min-height:60px;border-right:1px solid var(--border);cursor:pointer;overflow:hidden;}
+.sub:last-child{border-right:none;}
+.sub:hover{filter:brightness(.9);}
+.sub-name{font-size:8px;font-weight:bold;display:block;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;padding:0 1px;}
+.sub-detail{font-size:7px;display:block;margin-top:1px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
 
-  /* Colori UI generali */
-  --accent: #C07A3A;
-  --accent-dark: #A06030;
-  --bg: #F5F3EE;
-  --surface: #FFFFFF;
-  --border: #E0DDD5;
-  --text: #2C2C2A;
-  --text-muted: #888880;
+.sub-empty{background:#FAFAF7;}
+.sub-empty:hover{background:#EFEDE8;}
+.sub-plus{color:#CCC;font-size:14px;}
+
+/* Prenotazione piena */
+.sub-checkout-a,.sub-checkin-a{background:var(--pren-a-bg)!important;border-top:3px solid var(--pren-a-label);}
+.sub-checkout-a .sub-name,.sub-checkin-a .sub-name,
+.sub-checkout-a .sub-detail,.sub-checkin-a .sub-detail{color:var(--pren-a-text);}
+.sub-checkout-b,.sub-checkin-b{background:var(--pren-b-bg)!important;border-top:3px solid var(--pren-b-label);}
+.sub-checkout-b .sub-name,.sub-checkin-b .sub-name,
+.sub-checkout-b .sub-detail,.sub-checkin-b .sub-detail{color:var(--pren-b-text);}
+
+/* Soggiorno in corso */
+.sub-stay-a{background:var(--pren-a-light)!important;border-top:3px solid var(--pren-a-bg);}
+.sub-stay-b{background:var(--pren-b-light)!important;border-top:3px solid var(--pren-b-bg);}
+
+/* Pulizie */
+.sub-clean-todo{background:var(--clean-todo-bg)!important;border-top:3px solid #E65100;}
+.sub-clean-todo .sub-name,.sub-clean-todo .sub-detail{color:var(--clean-todo-text);}
+.sub-clean-1{background:var(--clean-1-bg)!important;border-top:3px solid #00695C;}
+.sub-clean-1 .sub-name,.sub-clean-1 .sub-detail{color:var(--clean-1-text);}
+.sub-clean-2{background:var(--clean-2-bg)!important;border-top:3px solid #4A148C;}
+.sub-clean-2 .sub-name,.sub-clean-2 .sub-detail{color:var(--clean-2-text);}
+.sub-clean-3{background:var(--clean-3-bg)!important;border-top:3px solid #B71C1C;}
+.sub-clean-3 .sub-name,.sub-clean-3 .sub-detail{color:var(--clean-3-text);}
+.sub-clean-extra{background:var(--clean-extra-bg)!important;border-top:3px solid #000;}
+.sub-clean-extra .sub-name,.sub-clean-extra .sub-detail{color:var(--clean-extra-text);}
+
+/* LEGENDA */
+.legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px 16px;background:var(--surface);border-top:1px solid var(--border);margin-top:8px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.legend-dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:14px;padding:22px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal h3{font-size:17px;font-weight:bold;margin-bottom:3px;}
+.modal-date{font-size:13px;color:var(--muted);margin-bottom:16px;font-family:sans-serif;}
+.modal label{font-size:11px;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;}
+.modal select,.modal input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:12px;font-family:sans-serif;color:var(--text);background:var(--surface);}
+.modal-btns{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+.btn-save{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:bold;min-width:80px;}
+.btn-save:hover{background:var(--accent-dark);}
+.btn-delete{background:#C62828;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
+.btn-delete:hover{background:#B71C1C;}
+.btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:999;max-width:320px;text-align:center;font-family:sans-serif;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+/* MOBILE */
+.week-nav{display:none;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;color:var(--muted);font-family:sans-serif;}
+.week-nav-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:15px;cursor:pointer;color:var(--muted);}
+
+@media(max-width:700px){
+  .week-nav{display:flex;}
+  .week-row{display:none;}
+  .week-row.visible{display:grid;}
+  .print-btn{display:none!important;}
+  .day-cell{min-height:72px;}
+  .sub{min-height:50px;}
+  .sub-name{font-size:7px;}
+  .sub-detail{font-size:6px;}
+  .month-label{font-size:12px;min-width:90px;}
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Georgia', serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+@media print{
+  header,.toolbar,.legend,.week-nav{display:none!important;}
+  .cal-wrap{padding:0;}
+  .week-row{display:grid!important;page-break-inside:avoid;}
+  body{background:#fff;}
+  .day-cell{min-height:60px;border:1px solid #999;}
 }
 
-/* ============================================================
-   HEADER
-============================================================ */
-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  gap: 8px;
-}
-
-.logo {
-  font-size: 17px;
-  font-weight: bold;
-  color: var(--text);
-  white-space: nowrap;
-}
-.logo span { color: var(--accent); }
-
-.nav-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.nav-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 5px 12px;
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--text-muted);
-  line-height: 1;
-}
-.nav-btn:hover { background: var(--bg); }
-
-.month-label {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--text);
-  min-width: 140px;
-  text-align: center;
-}
-
-/* ============================================================
-   TOOLBAR (aggiorna + stampa)
-============================================================ */
-.toolbar {
-  background: var(--surface);
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.sync-btn {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.sync-btn:hover { background: var(--accent-dark); }
-
-/* Pulsante stampa: visibile solo su desktop */
-.print-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.print-btn:hover { background: var(--bg); }
-
-.sync-status { font-size: 12px; color: var(--text-muted); }
-
-/* ============================================================
-   GRIGLIA CALENDARIO — DESKTOP (7 colonne)
-============================================================ */
-.cal-wrap { padding: 12px; }
-
-.day-headers {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-  margin-bottom: 3px;
-}
-
-.day-header {
-  text-align: center;
-  font-size: 11px;
-  font-weight: bold;
-  color: var(--text-muted);
-  padding: 4px 0;
-  letter-spacing: 0.06em;
-  font-family: 'Georgia', serif;
-}
-
-.weeks { display: flex; flex-direction: column; gap: 3px; }
-
-.week-row {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-}
-
-/* ============================================================
-   SINGOLA CELLA GIORNO
-============================================================ */
-.day-cell {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  overflow: hidden;
-  min-height: 80px;
-  background: var(--surface);
-}
-
-.day-cell.empty {
-  background: var(--bg);
-  opacity: 0.4;
-}
-
-.day-cell.today-cell { border: 2px solid var(--accent); }
-
-/* Riga numero del giorno */
-.day-num-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 0;
-  border-bottom: 1px solid var(--border);
-  background: #FAFAF7;
-}
-
-.day-num {
-  font-size: 11px;
-  font-weight: bold;
-  color: var(--text-muted);
-}
-
-.day-num.today-num {
-  background: var(--accent);
-  color: #fff;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-}
-
-/* ============================================================
-   3 SOTTO-CELLE: checkout | pulizie | checkin
-============================================================ */
-.sub-cells {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  height: calc(100% - 22px);
-}
-
-.sub {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 1px;
-  text-align: center;
-  min-height: 58px;
-  border-right: 1px solid var(--border);
-  cursor: pointer;
-  overflow: hidden;
-}
-.sub:last-child { border-right: none; }
-.sub:hover { filter: brightness(0.95); }
-
-.sub-name {
-  font-size: 8px;
-  font-weight: bold;
-  display: block;
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-  padding: 0 1px;
-}
-
-.sub-detail {
-  font-size: 7px;
-  display: block;
-  margin-top: 1px;
-  opacity: 0.8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-/* Celle vuote */
-.sub-empty { background: #FAFAF7; color: #ccc; }
-.sub-empty:hover { background: #F0EDE8; }
-
-/* Checkout (colori prenotazione, vedi JS per alternanza) */
-.sub-out-a { background: var(--pren-a-bg); border-top: 2px solid var(--pren-a-border); }
-.sub-out-a .sub-name { color: var(--pren-a-text); }
-.sub-out-b { background: var(--pren-b-bg); border-top: 2px solid var(--pren-b-border); }
-.sub-out-b .sub-name { color: var(--pren-b-text); }
-
-/* Checkin */
-.sub-in-a { background: var(--pren-a-bg); border-top: 2px solid var(--pren-a-border); }
-.sub-in-a .sub-name { color: var(--pren-a-text); }
-.sub-in-b { background: var(--pren-b-bg); border-top: 2px solid var(--pren-b-border); }
-.sub-in-b .sub-name { color: var(--pren-b-text); }
-
-/* Soggiorno in corso (cella pulizia durante prenotazione) */
-.sub-stay-a { background: var(--pren-a-bg); opacity: 0.7; }
-.sub-stay-b { background: var(--pren-b-bg); opacity: 0.7; }
-
-/* Pulizia da fare (rosso, inizio/fine prenotazione senza dati) */
-.sub-clean-todo {
-  background: var(--clean-todo-bg);
-  border-top: 2px solid var(--clean-todo-border);
-}
-.sub-clean-todo .sub-name { color: var(--clean-todo-text); }
-
-/* Pulizie per persona */
-.sub-clean-1 { background: var(--clean-1-bg); border-top: 2px solid var(--clean-1-border); }
-.sub-clean-1 .sub-name { color: var(--clean-1-text); }
-.sub-clean-2 { background: var(--clean-2-bg); border-top: 2px solid var(--clean-2-border); }
-.sub-clean-2 .sub-name { color: var(--clean-2-text); }
-.sub-clean-3 { background: var(--clean-3-bg); border-top: 2px solid var(--clean-3-border); }
-.sub-clean-3 .sub-name { color: var(--clean-3-text); }
-
-/* ============================================================
-   LEGENDA
-============================================================ */
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  margin-top: 8px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   MODAL (banner inserimento dati)
-============================================================ */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 200;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-.modal-overlay.open { display: flex; }
-
-.modal {
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 22px;
-  width: 100%;
-  max-width: 360px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-}
-
-.modal h3 {
-  font-size: 17px;
-  font-weight: bold;
-  margin-bottom: 3px;
-  color: var(--text);
-}
-
-.modal-date {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 16px;
-  font-family: sans-serif;
-}
-
-.modal label {
-  font-size: 13px;
-  font-weight: bold;
-  color: var(--text-muted);
-  display: block;
-  margin-bottom: 4px;
-  font-family: sans-serif;
-}
-
-.modal select,
-.modal input[type="text"],
-.modal input[type="number"] {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 14px;
-  margin-bottom: 12px;
-  font-family: sans-serif;
-  color: var(--text);
-  background: var(--surface);
-}
-
-.modal-btns {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.btn-save {
-  flex: 1;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: bold;
-}
-.btn-save:hover { background: var(--accent-dark); }
-
-.btn-delete {
-  background: #FEE;
-  color: #C00;
-  border: 1px solid #FCC;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.btn-cancel {
-  background: var(--bg);
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.saving-indicator {
-  font-size: 12px;
-  color: var(--accent);
-  text-align: center;
-  margin-top: 8px;
-  display: none;
-  font-family: sans-serif;
-}
-
-/* ============================================================
-   TOAST NOTIFICHE
-============================================================ */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 13px;
-  z-index: 999;
-  max-width: 320px;
-  text-align: center;
-  font-family: sans-serif;
-  animation: fadeIn 0.2s ease;
-}
-@keyframes fadeIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-
-/* ============================================================
-   RESPONSIVE MOBILE
-   Su mobile: mostra una settimana alla volta
-   Celle a larghezza fissa, testo troncato
-============================================================ */
-@media (max-width: 700px) {
-  .week-row {
-    grid-template-columns: repeat(7, 46px);
-    overflow-x: auto;
-  }
-
-  .day-headers {
-    grid-template-columns: repeat(7, 46px);
-    overflow-x: hidden;
-  }
-
-  .cal-wrap { padding: 8px; overflow-x: auto; }
-
-  .day-cell { min-height: 70px; }
-
-  .sub { min-height: 48px; }
-  .sub-name { font-size: 7px; }
-  .sub-detail { font-size: 6px; }
-
-  /* Su mobile nasconde tutte le settimane tranne quella corrente */
-  .week-row { display: none; }
-  .week-row.visible { display: grid; }
-
-  /* Navigazione settimana su mobile */
-  .week-nav { display: flex !important; }
-
-  /* Nascondi navigazione mese su mobile, mostra quella settimana */
-  .month-label { font-size: 12px; min-width: 100px; }
-
-  .print-btn { display: none !important; }
-}
-
-/* Navigazione settimana (solo mobile) */
-.week-nav {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 6px 16px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text-muted);
-  font-family: sans-serif;
-}
-
-/* ============================================================
-   STAMPA
-============================================================ */
-@media print {
-  header, .toolbar, .legend, .week-nav { display: none !important; }
-  .cal-wrap { padding: 0; }
-  .week-row { display: grid !important; page-break-inside: avoid; }
-  body { background: #fff; }
-  .day-cell { border: 1px solid #ccc; min-height: 60px; }
-  .sub { min-height: 40px; }
-  .sub-name { font-size: 7px; }
-}
-
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-family: sans-serif;
-}
+.loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;font-family:sans-serif;}
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-  HEADER: logo + navigazione mese
-============================================================ -->
 <header>
   <div class="logo">Bolo <span>Apartment</span></div>
   <div class="nav-controls">
@@ -565,115 +149,77 @@ header {
   </div>
 </header>
 
-<!-- Navigazione settimana (solo mobile) -->
 <div class="week-nav" id="weekNav">
+  <button class="week-nav-btn" onclick="changePeriod(-1)">&#8249;</button>
   <span id="weekLabel"></span>
+  <button class="week-nav-btn" onclick="changePeriod(1)">&#8250;</button>
 </div>
 
-<!-- ============================================================
-  TOOLBAR: aggiorna + stampa
-============================================================ -->
 <div class="toolbar">
   <button class="sync-btn" onclick="loadData()">&#8635; Aggiorna</button>
   <button class="print-btn" onclick="window.print()">🖨 Stampa</button>
   <span class="sync-status" id="syncStatus">Caricamento...</span>
 </div>
 
-<!-- ============================================================
-  GRIGLIA CALENDARIO
-============================================================ -->
 <div class="cal-wrap">
-  <div class="day-headers" id="dayHeaders">
-    <div class="day-header">LUN</div>
-    <div class="day-header">MAR</div>
-    <div class="day-header">MER</div>
-    <div class="day-header">GIO</div>
-    <div class="day-header">VEN</div>
-    <div class="day-header">SAB</div>
+  <div class="day-headers">
+    <div class="day-header">LUN</div><div class="day-header">MAR</div>
+    <div class="day-header">MER</div><div class="day-header">GIO</div>
+    <div class="day-header">VEN</div><div class="day-header">SAB</div>
     <div class="day-header">DOM</div>
   </div>
-  <div class="weeks" id="weeksGrid">
-    <div class="loading">Caricamento prenotazioni...</div>
-  </div>
+  <div class="weeks" id="weeksGrid"><div class="loading">Caricamento prenotazioni...</div></div>
 </div>
 
-<!-- LEGENDA -->
 <div class="legend">
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--pren-a-bg);border:1px solid var(--pren-a-border);"></div> Prenotazione A
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--pren-b-bg);border:1px solid var(--pren-b-border);"></div> Prenotazione B
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--clean-todo-bg);border:1px solid var(--clean-todo-border);"></div> Pulizia da fare
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--clean-1-bg);border:1px solid var(--clean-1-border);"></div> Maria
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--clean-2-bg);border:1px solid var(--clean-2-border);"></div> Anna
-  </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:var(--clean-3-bg);border:1px solid var(--clean-3-border);"></div> Marco
-  </div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1565C0;"></div> Prenotazione A</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#E65100;"></div> Prenotazione B</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia da fare</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Maria</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Anna</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C62828;"></div> Marco</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#37474F;"></div> Straordinaria</div>
 </div>
 
-<!-- ============================================================
-  MODAL PULIZIE
-============================================================ -->
+<!-- MODAL PULIZIE -->
 <div class="modal-overlay" id="modalPulizie">
   <div class="modal">
     <h3>🧹 Pulizia</h3>
     <div class="modal-date" id="pulizieDate"></div>
-
     <label>Tipo pulizia</label>
     <select id="pulTipo">
-      <option value="Finale">Finale (Check-out)</option>
-      <option value="Straordinaria">Straordinaria</option>
+      <option value="Iniziale">Iniziale (prepara per nuovi ospiti)</option>
+      <option value="Straordinaria">Straordinaria (a metà soggiorno)</option>
     </select>
-
+    <!-- Modifica i nomi qui e in CLEANER_CSS nel JS -->
     <label>Chi pulisce</label>
-    <!-- MODIFICA NOMI QUI se cambiano le persone -->
     <select id="pulChi">
       <option value="">— seleziona —</option>
-      <option value="Erica">Erica</option>
-      <option value="Manu">Manu</option>
-      <option value="Sello">Sello</option>
+      <option value="Maria">Maria</option>
+      <option value="Anna">Anna</option>
+      <option value="Marco">Marco</option>
     </select>
-
     <label>Note</label>
     <input type="text" id="pulNote" placeholder="es. cambia lenzuola camera verde">
-
-    <div class="saving-indicator" id="pulSaving">Salvataggio in corso...</div>
-
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modalPulizie')">Annulla</button>
-      <button class="btn-delete" id="pulBtnDelete" onclick="deletePulizia()" style="display:none">Elimina</button>
+      <button class="btn-delete" id="pulBtnDelete" onclick="deletePulizia()" style="display:none">🗑 Elimina</button>
       <button class="btn-save" onclick="savePulizia()">Salva</button>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-  MODAL PRENOTAZIONE
-============================================================ -->
+<!-- MODAL PRENOTAZIONE -->
 <div class="modal-overlay" id="modalPrenotazione">
   <div class="modal">
     <h3>🏠 Prenotazione</h3>
     <div class="modal-date" id="prenDate"></div>
-
     <label>Nome ospite</label>
     <input type="text" id="prenNome" placeholder="es. Rossi">
-
     <label>Numero ospiti</label>
     <input type="number" id="prenOspiti" placeholder="es. 3" min="1" max="6">
-
     <label>Note</label>
     <input type="text" id="prenNote" placeholder="Note aggiuntive">
-
-    <div class="saving-indicator" id="prenSaving">Salvataggio in corso...</div>
-
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modalPrenotazione')">Annulla</button>
       <button class="btn-save" onclick="savePrenotazione()">Salva</button>
@@ -684,469 +230,302 @@ header {
 <script>
 // ============================================================
 //  CONFIGURAZIONE
-//  Modifica SHEET_ID se cambia il Google Sheet
-//  Modifica APPS_SCRIPT_URL dopo aver pubblicato lo script
 // ============================================================
 const SHEET_ID = "1kwUIGJKXYGkLSD97zaL-vnf2cVjjK3Hv7OnUYYCDHzE";
 const BASE_URL = `https://opensheet.elk.sh/${SHEET_ID}/`;
-
-// URL dello script Apps Script per la scrittura sul Sheet
-// DA COMPILARE dopo aver pubblicato lo script come Web App
 const APPS_SCRIPT_URL = "INSERISCI_QUI_URL_APPS_SCRIPT";
 
-// Nomi persone che puliscono → corrispondono ai colori CSS
-// clean-1 = Maria, clean-2 = Anna, clean-3 = Marco
-const CLEANER_COLORS = { "Maria": "sub-clean-1", "Anna": "sub-clean-2", "Marco": "sub-clean-3" };
+// Mappa nome → classe CSS. Aggiorna se cambi i nomi nel select.
+const CLEANER_CSS = { "Maria":"sub-clean-1", "Anna":"sub-clean-2", "Marco":"sub-clean-3" };
 
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                 "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 // ============================================================
-//  STATO GLOBALE
+//  STATO
 // ============================================================
-let curYear = new Date().getFullYear();
-let curMonth = new Date().getMonth();
-let curWeek = 0; // indice settimana corrente su mobile
-let isMobile = window.innerWidth <= 700;
-
-let prenotazioni = []; // array di oggetti prenotazione
-let pulizie = [];      // array di oggetti pulizia
-
-// Per il modal prenotazione
-let modalPrenId = null;
-// Per il modal pulizia
-let modalPulDate = null;
-let editingPulIdx = -1;
+let curYear=new Date().getFullYear(), curMonth=new Date().getMonth(), curWeek=0;
+let isMobile=window.innerWidth<=700;
+let prenotazioni=[], pulizie=[];
+let modalPrenId=null, modalPulKey=null, editPulIdx=-1;
 
 // ============================================================
 //  CARICAMENTO DATI DA GOOGLE SHEETS
 // ============================================================
 async function loadData() {
-  document.getElementById("syncStatus").textContent = "Aggiornamento...";
+  document.getElementById("syncStatus").textContent="Aggiornamento...";
   try {
-    const [rPren, rPul] = await Promise.all([
-      fetch(BASE_URL + "Prenotazioni").then(r => r.json()),
-      fetch(BASE_URL + "Pulizie").then(r => r.json())
+    const [rP,rC]=await Promise.all([
+      fetch(BASE_URL+"Prenotazioni").then(r=>r.json()),
+      fetch(BASE_URL+"Pulizie").then(r=>r.json())
     ]);
+    prenotazioni=(rP||[]).map(r=>({
+      id:r["ID"]||"", checkIn:r["CheckIn"]||"", checkOut:r["CheckOut"]||"",
+      ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||""
+    })).filter(r=>r.id&&r.checkIn&&r.checkOut);
 
-    // Mappa le righe del Sheet in oggetti leggibili
-    prenotazioni = (rPren || []).map(row => ({
-      id:       row["ID"]       || "",
-      checkIn:  row["CheckIn"]  || "",
-      checkOut: row["CheckOut"] || "",
-      ospiti:   row["Ospiti"]   || "",
-      note:     row["Note"]     || "",
-      nome:     row["Nome"]     || ""
-    })).filter(r => r.id);
+    pulizie=(rC||[]).map(r=>({
+      data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
+      chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
+    })).filter(r=>r.data);
 
-    pulizie = (rPul || []).map(row => ({
-      data:     row["DataPulizia"]    || "",
-      tipo:     row["TipoPulizia"]    || "",
-      chi:      row["ChiPulisce"]     || "",
-      idPren:   row["IDPrenotazione"] || "",
-      note:     row["Note"]           || ""
-    })).filter(r => r.data);
-
-    // Assegna un indice colore (alternato) a ogni prenotazione
     assignColors();
-
     renderCalendar();
-
-    const now = new Date();
-    document.getElementById("syncStatus").textContent =
-      `Aggiornato alle ${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`;
+    const n=new Date();
+    document.getElementById("syncStatus").textContent=
+      `Aggiornato alle ${n.getHours()}:${String(n.getMinutes()).padStart(2,"0")}`;
   } catch(e) {
-    document.getElementById("syncStatus").textContent = "Errore caricamento";
+    document.getElementById("syncStatus").textContent="Errore caricamento";
     console.error(e);
   }
 }
 
 // ============================================================
-//  ASSEGNA COLORI ALTERNATI ALLE PRENOTAZIONI
-//  Ordina per data check-in e alterna A/B
+//  COLORI ALTERNATI: ordina per check-in e alterna A/B
 // ============================================================
 function assignColors() {
-  const sorted = [...prenotazioni].sort((a, b) => {
-    return parseDateToObj(a.checkIn) - parseDateToObj(b.checkIn);
-  });
-  sorted.forEach((p, i) => {
-    p.colorClass = i % 2 === 0 ? "a" : "b";
-  });
-  // Riporta i colori sulle prenotazioni originali per ID
-  prenotazioni.forEach(p => {
-    const s = sorted.find(x => x.id === p.id);
-    if (s) p.colorClass = s.colorClass;
-  });
+  [...prenotazioni].sort((a,b)=>toDate(a.checkIn)-toDate(b.checkIn))
+    .forEach((p,i)=>{ p.colorClass=i%2===0?"a":"b"; });
 }
 
 // ============================================================
-//  UTILITY DATE
-//  Tutte le date nel Sheet sono in formato dd/mm/yyyy
+//  UTILITY DATE (formato Sheet: dd/mm/yyyy, chiave: yyyy-mm-dd)
 // ============================================================
-function parseDateToObj(str) {
-  if (!str) return null;
-  const [d, m, y] = str.split("/");
-  return new Date(`${y}-${m}-${d}`);
-}
-
-function dateToStr(y, m, d) {
-  // Restituisce stringa dd/mm/yyyy
-  return `${String(d).padStart(2,"0")}/${String(m+1).padStart(2,"0")}/${y}`;
-}
-
-function dateToKey(y, m, d) {
-  // Chiave interna yyyy-mm-dd per confronti
-  return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-}
-
-function strToKey(ddmmyyyy) {
-  if (!ddmmyyyy) return null;
-  const [d, m, y] = ddmmyyyy.split("/");
-  return `${y}-${m}-${d}`;
-}
+function toDate(s){ if(!s)return null; const[d,m,y]=s.split("/"); return new Date(`${y}-${m}-${d}`); }
+function dateToKey(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+function ddmmToKey(s){ if(!s)return null; const[d,m,y]=s.split("/"); return `${y}-${m}-${d}`; }
+function keyToDdmm(k){ const[y,m,d]=k.split("-"); return `${d}/${m}/${y}`; }
 
 // ============================================================
-//  LOOKUP: trova prenotazione/pulizia per una data specifica
+//  LOOKUP
 // ============================================================
-function getPrenByCheckout(key) {
-  return prenotazioni.find(p => strToKey(p.checkOut) === key);
-}
-function getPrenByCheckin(key) {
-  return prenotazioni.find(p => strToKey(p.checkIn) === key);
-}
-function getPrenDuringStay(key) {
-  // Ritorna la prenotazione attiva in quella data (soggiorno in corso)
-  return prenotazioni.find(p => {
-    const ci = parseDateToObj(p.checkIn);
-    const co = parseDateToObj(p.checkOut);
-    const d = new Date(key);
-    return ci && co && d > ci && d < co;
+function prenByCheckout(k){ return prenotazioni.find(p=>ddmmToKey(p.checkOut)===k); }
+function prenByCheckin(k) { return prenotazioni.find(p=>ddmmToKey(p.checkIn)===k); }
+function prenDuringStay(k){
+  const d=new Date(k);
+  return prenotazioni.find(p=>{
+    const ci=toDate(p.checkIn), co=toDate(p.checkOut);
+    return ci&&co&&d>ci&&d<co;
   });
 }
-function getPulizia(key) {
-  return pulizie.find(p => strToKey(p.data) === key);
-}
-function getPuliziaIdx(key) {
-  return pulizie.findIndex(p => strToKey(p.data) === key);
-}
+function getPulizia(k)   { return pulizie.find(p=>ddmmToKey(p.data)===k); }
+function getPuliziaIdx(k){ return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
 
 // ============================================================
-//  RENDER SOTTO-CELLA SINGOLA
+//  RENDER SOTTO-CELLE
 // ============================================================
-function renderSubCell(key) {
-  const checkout = getPrenByCheckout(key);
-  const checkin  = getPrenByCheckin(key);
-  const staying  = getPrenDuringStay(key);
-  const pulizia  = getPulizia(key);
+function renderSubCells(k) {
+  const checkout=prenByCheckout(k), checkin=prenByCheckin(k);
+  const staying=prenDuringStay(k), pulizia=getPulizia(k);
 
-  // --- CELLA CHECK-OUT ---
-  let outHtml = "";
-  if (checkout) {
-    const c = checkout.colorClass;
-    outHtml = `<div class="sub sub-out-${c}" onclick="openModalPren('${checkout.id}')">
-      <span class="sub-name">${checkout.nome || "Ospite"}</span>
-      ${checkout.ospiti ? `<span class="sub-detail">${checkout.ospiti} osp.</span>` : ""}
-    </div>`;
-  } else {
-    outHtml = `<div class="sub sub-empty"></div>`;
-  }
+  // CHECK-OUT
+  let out = checkout
+    ? `<div class="sub sub-checkout-${checkout.colorClass}" onclick="openModalPren('${checkout.id}')">
+        <span class="sub-name">${checkout.nome||"Ospite"}</span>
+        ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
+       </div>`
+    : staying
+      ? `<div class="sub sub-stay-${staying.colorClass}"></div>`
+      : `<div class="sub sub-empty"></div>`;
 
-  // --- CELLA PULIZIE ---
-  let cleanHtml = "";
-  if (pulizia && pulizia.chi) {
-    // Pulizia compilata: colore per persona
-    const cls = CLEANER_COLORS[pulizia.chi] || "sub-clean-1";
-    cleanHtml = `<div class="sub ${cls}" onclick="openModalPulizia('${key}')">
-      <span class="sub-name">${pulizia.chi}</span>
-      <span class="sub-detail">${pulizia.tipo || ""}</span>
-    </div>`;
-  } else if (checkout || checkin) {
-    // Inizio o fine prenotazione: pulizia da fare (rosso)
-    cleanHtml = `<div class="sub sub-clean-todo" onclick="openModalPulizia('${key}')">
+  // PULIZIE
+  let clean;
+  if (pulizia) {
+    if (pulizia.tipo==="Straordinaria") {
+      clean=`<div class="sub sub-clean-extra" onclick="openModalPulizia('${k}')">
+        <span class="sub-name">${pulizia.chi||"Straord."}</span>
+        <span class="sub-detail">Straord.</span></div>`;
+    } else {
+      const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
+      clean=`<div class="sub ${cls}" onclick="openModalPulizia('${k}')">
+        <span class="sub-name">${pulizia.chi||"—"}</span>
+        <span class="sub-detail">${pulizia.tipo||""}</span></div>`;
+    }
+  } else if (checkout||checkin) {
+    // Giorno di cambio: pulizia da fare
+    clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}')">
       <span class="sub-name">Pulizia</span>
-      <span class="sub-detail">da fare</span>
-    </div>`;
+      <span class="sub-detail">da fare ▸</span></div>`;
   } else if (staying) {
-    // Soggiorno in corso: stessa tinta della prenotazione
-    const c = staying.colorClass;
-    cleanHtml = `<div class="sub sub-stay-${c}" onclick="openModalPulizia('${key}')">
-      <span class="sub-name" style="opacity:0.4">+</span>
-    </div>`;
+    // Soggiorno in corso: continuità colore
+    clean=`<div class="sub sub-stay-${staying.colorClass}" onclick="openModalPulizia('${k}')">
+      <span class="sub-name" style="opacity:.25">+</span></div>`;
   } else {
-    cleanHtml = `<div class="sub sub-empty" onclick="openModalPulizia('${key}')">
-      <span style="font-size:14px;opacity:0.2">+</span>
-    </div>`;
+    clean=`<div class="sub sub-empty" onclick="openModalPulizia('${k}')">
+      <span class="sub-plus">+</span></div>`;
   }
 
-  // --- CELLA CHECK-IN ---
-  let inHtml = "";
-  if (checkin) {
-    const c = checkin.colorClass;
-    inHtml = `<div class="sub sub-in-${c}" onclick="openModalPren('${checkin.id}')">
-      <span class="sub-name">${checkin.nome || "Ospite"}</span>
-      ${checkin.ospiti ? `<span class="sub-detail">${checkin.ospiti} osp.</span>` : ""}
-    </div>`;
-  } else {
-    inHtml = `<div class="sub sub-empty"></div>`;
-  }
+  // CHECK-IN
+  let inn = checkin
+    ? `<div class="sub sub-checkin-${checkin.colorClass}" onclick="openModalPren('${checkin.id}')">
+        <span class="sub-name">${checkin.nome||"Ospite"}</span>
+        ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
+       </div>`
+    : staying
+      ? `<div class="sub sub-stay-${staying.colorClass}"></div>`
+      : `<div class="sub sub-empty"></div>`;
 
-  return outHtml + cleanHtml + inHtml;
+  return out+clean+inn;
 }
 
 // ============================================================
-//  RENDER CALENDARIO COMPLETO
+//  RENDER CALENDARIO
 // ============================================================
 function renderCalendar() {
-  isMobile = window.innerWidth <= 700;
+  isMobile=window.innerWidth<=700;
+  document.getElementById("periodLabel").textContent=MONTHS[curMonth]+" "+curYear;
 
-  document.getElementById("periodLabel").textContent =
-    MONTHS[curMonth] + " " + curYear;
+  const today=new Date(), fd=new Date(curYear,curMonth,1);
+  const dim=new Date(curYear,curMonth+1,0).getDate();
+  let so=fd.getDay()-1; if(so<0)so=6;
+  const total=Math.ceil((so+dim)/7)*7, weeks=total/7;
+  if(curWeek>=weeks)curWeek=weeks-1;
 
-  const today    = new Date();
-  const firstDay = new Date(curYear, curMonth, 1);
-  const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
-
-  // Offset: lunedì = 0
-  let startOffset = firstDay.getDay() - 1;
-  if (startOffset < 0) startOffset = 6;
-
-  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
-  const totalWeeks = totalCells / 7;
-
-  // Su mobile: calcola settimana corrente se non impostata
-  if (isMobile && curWeek >= totalWeeks) curWeek = totalWeeks - 1;
-
-  let html = "";
-
-  for (let w = 0; w < totalWeeks; w++) {
-    const isVisible = !isMobile || w === curWeek;
-    html += `<div class="week-row ${isVisible ? "visible" : ""}">`;
-
-    for (let d = 0; d < 7; d++) {
-      const idx = w * 7 + d;
-      const dayNum = idx - startOffset + 1;
-      const isValid = dayNum >= 1 && dayNum <= daysInMonth;
-
-      if (!isValid) {
-        html += `<div class="day-cell empty"></div>`;
-        continue;
-      }
-
-      const key = dateToKey(curYear, curMonth, dayNum);
-      const isToday = today.getDate() === dayNum &&
-                      today.getMonth() === curMonth &&
-                      today.getFullYear() === curYear;
-
-      const numHtml = isToday
-        ? `<span class="day-num today-num">${dayNum}</span>`
-        : `<span class="day-num">${dayNum}</span>`;
-
-      html += `<div class="day-cell${isToday ? " today-cell" : ""}">
-        <div class="day-num-row">${numHtml}</div>
-        <div class="sub-cells">${renderSubCell(key)}</div>
+  let html="";
+  for(let w=0;w<weeks;w++){
+    const vis=!isMobile||w===curWeek;
+    html+=`<div class="week-row${vis?" visible":""}">`;
+    for(let d=0;d<7;d++){
+      const idx=w*7+d, dn=idx-so+1, valid=dn>=1&&dn<=dim;
+      if(!valid){html+=`<div class="day-cell empty"></div>`;continue;}
+      const k=dateToKey(curYear,curMonth,dn);
+      const isT=today.getDate()===dn&&today.getMonth()===curMonth&&today.getFullYear()===curYear;
+      const num=isT?`<span class="day-num today-num">${dn}</span>`:`<span class="day-num">${dn}</span>`;
+      html+=`<div class="day-cell${isT?" today-cell":""}">
+        <div class="day-num-row">${num}</div>
+        <div class="sub-cells">${renderSubCells(k)}</div>
       </div>`;
     }
-
-    html += `</div>`;
+    html+=`</div>`;
   }
-
-  document.getElementById("weeksGrid").innerHTML = html;
-
-  // Aggiorna label settimana su mobile
-  updateWeekLabel(startOffset, daysInMonth);
+  document.getElementById("weeksGrid").innerHTML=html;
+  updateWeekLabel(so,dim);
 }
 
 // ============================================================
-//  NAVIGAZIONE: mese (desktop) o settimana (mobile)
+//  NAVIGAZIONE
 // ============================================================
 function changePeriod(dir) {
-  if (isMobile) {
-    // Naviga settimana per settimana
-    const firstDay = new Date(curYear, curMonth, 1);
-    let startOffset = firstDay.getDay() - 1;
-    if (startOffset < 0) startOffset = 6;
-    const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
-    const totalWeeks = Math.ceil((startOffset + daysInMonth) / 7);
-
-    curWeek += dir;
-    if (curWeek >= totalWeeks) {
-      curWeek = 0;
-      curMonth++;
-      if (curMonth > 11) { curMonth = 0; curYear++; }
-    } else if (curWeek < 0) {
-      curMonth--;
-      if (curMonth < 0) { curMonth = 11; curYear--; }
-      const fd2 = new Date(curYear, curMonth, 1);
-      let so2 = fd2.getDay() - 1;
-      if (so2 < 0) so2 = 6;
-      const dim2 = new Date(curYear, curMonth + 1, 0).getDate();
-      curWeek = Math.ceil((so2 + dim2) / 7) - 1;
+  if(isMobile){
+    const fd=new Date(curYear,curMonth,1);
+    let so=fd.getDay()-1; if(so<0)so=6;
+    const dim=new Date(curYear,curMonth+1,0).getDate();
+    const tw=Math.ceil((so+dim)/7);
+    curWeek+=dir;
+    if(curWeek>=tw){curWeek=0;curMonth++;if(curMonth>11){curMonth=0;curYear++;}}
+    else if(curWeek<0){
+      curMonth--;if(curMonth<0){curMonth=11;curYear--;}
+      const fd2=new Date(curYear,curMonth,1);
+      let so2=fd2.getDay()-1;if(so2<0)so2=6;
+      const dim2=new Date(curYear,curMonth+1,0).getDate();
+      curWeek=Math.ceil((so2+dim2)/7)-1;
     }
   } else {
-    // Naviga mese per mese
-    curMonth += dir;
-    if (curMonth > 11) { curMonth = 0; curYear++; }
-    if (curMonth < 0) { curMonth = 11; curYear--; }
-    curWeek = 0;
+    curMonth+=dir;
+    if(curMonth>11){curMonth=0;curYear++;}
+    if(curMonth<0){curMonth=11;curYear--;}
+    curWeek=0;
   }
   renderCalendar();
 }
 
-function updateWeekLabel(startOffset, daysInMonth) {
-  const label = document.getElementById("weekLabel");
-  if (!isMobile) { label.textContent = ""; return; }
-
-  const startIdx = curWeek * 7;
-  const endIdx   = startIdx + 6;
-  const firstDay = Math.max(1, startIdx - startOffset + 1);
-  const lastDay  = Math.min(daysInMonth, endIdx - startOffset + 1);
-  label.textContent = `${firstDay} – ${lastDay} ${MONTHS[curMonth]}`;
+function updateWeekLabel(so,dim){
+  const lbl=document.getElementById("weekLabel");
+  if(!isMobile){lbl.textContent="";return;}
+  const si=curWeek*7;
+  const f=Math.max(1,si-so+1), l=Math.min(dim,si+6-so+1);
+  lbl.textContent=`${f} – ${l} ${MONTHS[curMonth]} ${curYear}`;
 }
 
 // ============================================================
-//  MODAL PULIZIE — apertura, salvataggio, eliminazione
+//  MODAL PULIZIE
 // ============================================================
-function openModalPulizia(key) {
-  modalPulDate = key;
-  const [y, m, d] = key.split("-");
-  document.getElementById("pulizieDate").textContent = `${d}/${m}/${y}`;
-
-  const idx = getPuliziaIdx(key);
-  editingPulIdx = idx;
-
-  if (idx >= 0) {
-    document.getElementById("pulTipo").value = pulizie[idx].tipo || "Finale";
-    document.getElementById("pulChi").value  = pulizie[idx].chi  || "";
-    document.getElementById("pulNote").value = pulizie[idx].note || "";
-    document.getElementById("pulBtnDelete").style.display = "block";
+function openModalPulizia(k){
+  modalPulKey=k;
+  document.getElementById("pulizieDate").textContent=keyToDdmm(k);
+  const idx=getPuliziaIdx(k); editPulIdx=idx;
+  if(idx>=0){
+    document.getElementById("pulTipo").value=pulizie[idx].tipo||"Iniziale";
+    document.getElementById("pulChi").value=pulizie[idx].chi||"";
+    document.getElementById("pulNote").value=pulizie[idx].note||"";
+    document.getElementById("pulBtnDelete").style.display="block";
   } else {
-    document.getElementById("pulTipo").value = "Finale";
-    document.getElementById("pulChi").value  = "";
-    document.getElementById("pulNote").value = "";
-    document.getElementById("pulBtnDelete").style.display = "none";
+    document.getElementById("pulTipo").value="Iniziale";
+    document.getElementById("pulChi").value="";
+    document.getElementById("pulNote").value="";
+    document.getElementById("pulBtnDelete").style.display="none";
   }
-
   document.getElementById("modalPulizie").classList.add("open");
 }
 
-async function savePulizia() {
-  const [y, m, d] = modalPulDate.split("-");
-  const dataFormatted = `${d}/${m}/${y}`;
-  const tipo = document.getElementById("pulTipo").value;
-  const chi  = document.getElementById("pulChi").value;
-  const note = document.getElementById("pulNote").value;
-
-  // Aggiorna stato locale
-  const newRow = { data: dataFormatted, tipo, chi, idPren: "", note };
-  if (editingPulIdx >= 0) {
-    pulizie[editingPulIdx] = newRow;
-  } else {
-    pulizie.push(newRow);
-  }
-
-  closeModal("modalPulizie");
-  renderCalendar();
-
-  // Salva su Google Sheet tramite Apps Script
-  await saveToSheet("pulizia", newRow);
+async function savePulizia(){
+  const nr={data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
+    chi:document.getElementById("pulChi").value,idPren:"",note:document.getElementById("pulNote").value};
+  if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
+  closeModal("modalPulizie"); renderCalendar();
+  await saveToSheet("pulizia",nr);
 }
 
-async function deletePulizia() {
-  if (editingPulIdx < 0) return;
-  const row = pulizie[editingPulIdx];
-  pulizie.splice(editingPulIdx, 1);
-  closeModal("modalPulizie");
-  renderCalendar();
-  await saveToSheet("deletePulizia", { data: row.data });
+async function deletePulizia(){
+  if(editPulIdx<0)return;
+  const row=pulizie[editPulIdx];
+  pulizie.splice(editPulIdx,1);
+  closeModal("modalPulizie"); renderCalendar();
+  await saveToSheet("deletePulizia",{data:row.data});
 }
 
 // ============================================================
-//  MODAL PRENOTAZIONE — apertura e salvataggio
+//  MODAL PRENOTAZIONE
 // ============================================================
-function openModalPren(id) {
-  modalPrenId = id;
-  const p = prenotazioni.find(x => x.id === id);
-  if (!p) return;
-
-  document.getElementById("prenDate").textContent =
-    `Check-in: ${p.checkIn} → Check-out: ${p.checkOut}`;
-  document.getElementById("prenNome").value   = p.nome   || "";
-  document.getElementById("prenOspiti").value = p.ospiti || "";
-  document.getElementById("prenNote").value   = p.note   || "";
-
+function openModalPren(id){
+  modalPrenId=id;
+  const p=prenotazioni.find(x=>x.id===id); if(!p)return;
+  document.getElementById("prenDate").textContent=`Check-in: ${p.checkIn}  →  Check-out: ${p.checkOut}`;
+  document.getElementById("prenNome").value=p.nome||"";
+  document.getElementById("prenOspiti").value=p.ospiti||"";
+  document.getElementById("prenNote").value=p.note||"";
   document.getElementById("modalPrenotazione").classList.add("open");
 }
 
-async function savePrenotazione() {
-  const p = prenotazioni.find(x => x.id === modalPrenId);
-  if (!p) return;
-
-  p.nome   = document.getElementById("prenNome").value;
-  p.ospiti = document.getElementById("prenOspiti").value;
-  p.note   = document.getElementById("prenNote").value;
-
-  closeModal("modalPrenotazione");
-  assignColors();
-  renderCalendar();
-
-  // Salva su Google Sheet
-  await saveToSheet("prenotazione", { id: p.id, nome: p.nome, ospiti: p.ospiti, note: p.note });
+async function savePrenotazione(){
+  const p=prenotazioni.find(x=>x.id===modalPrenId); if(!p)return;
+  p.nome=document.getElementById("prenNome").value;
+  p.ospiti=document.getElementById("prenOspiti").value;
+  p.note=document.getElementById("prenNote").value;
+  closeModal("modalPrenotazione"); assignColors(); renderCalendar();
+  await saveToSheet("prenotazione",{id:p.id,nome:p.nome,ospiti:p.ospiti,note:p.note});
 }
 
 // ============================================================
-//  SCRITTURA SU GOOGLE SHEET tramite Apps Script Web App
+//  SCRITTURA SU GOOGLE SHEET via Apps Script
 // ============================================================
-async function saveToSheet(action, data) {
-  if (APPS_SCRIPT_URL === "INSERISCI_QUI_URL_APPS_SCRIPT") {
-    showToast("⚠️ Apps Script non configurato — dati salvati solo in memoria");
-    return;
+async function saveToSheet(action,data){
+  if(APPS_SCRIPT_URL==="INSERISCI_QUI_URL_APPS_SCRIPT"){
+    showToast("⚠️ Dati in memoria (Apps Script non configurato)"); return;
   }
-  try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...data })
-    });
+  try{
+    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...data})});
     showToast("✓ Salvato");
-  } catch(e) {
-    showToast("Errore salvataggio — riprova");
-    console.error(e);
-  }
+  }catch(e){showToast("Errore salvataggio");console.error(e);}
 }
 
 // ============================================================
-//  UTILITY UI
+//  UTILITY
 // ============================================================
-function closeModal(id) {
-  document.getElementById(id).classList.remove("open");
+function closeModal(id){document.getElementById(id).classList.remove("open");}
+function showToast(msg){
+  const t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),3500);
 }
-
-function showToast(msg) {
-  const t = document.createElement("div");
-  t.className = "toast";
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3500);
-}
-
-// Chiudi modal cliccando fuori
-["modalPulizie", "modalPrenotazione"].forEach(id => {
-  document.getElementById(id).addEventListener("click", function(e) {
-    if (e.target === this) closeModal(id);
-  });
+["modalPulizie","modalPrenotazione"].forEach(id=>{
+  document.getElementById(id).addEventListener("click",function(e){if(e.target===this)closeModal(id);});
+});
+window.addEventListener("resize",()=>{
+  const was=isMobile; isMobile=window.innerWidth<=700;
+  if(was!==isMobile)renderCalendar();
 });
 
-// Ricalcola layout al resize
-window.addEventListener("resize", () => {
-  const wasMobile = isMobile;
-  isMobile = window.innerWidth <= 700;
-  if (wasMobile !== isMobile) renderCalendar();
-});
-
-// ============================================================
-//  AVVIO
-// ============================================================
 loadData();
 </script>
 </body>
