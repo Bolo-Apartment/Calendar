@@ -469,15 +469,26 @@ async function savePrenotazione(){
 // ============================================================
 //  SCRITTURA SU GOOGLE SHEET
 // ============================================================
-async function saveToSheet(action,data){
-  if(APPS_SCRIPT_URL==="INSERISCI_QUI_URL_APPS_SCRIPT"){
+async function saveToSheet(action, data) {
+  if(APPS_SCRIPT_URL === "INSERISCI_QUI_URL_APPS_SCRIPT"){
     showToast("⚠️ Dati in memoria (Apps Script non configurato)"); return;
   }
-  try{
-    await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",
-      headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...data})});
+  try {
+    // Usiamo FormData invece di JSON per evitare problemi CORS con Apps Script
+    const payload = typeof data === "string" 
+      ? JSON.stringify({action, id: data})
+      : JSON.stringify({action, ...data});
+    
+    await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: payload
+    });
     showToast("✓ Salvato");
-  }catch(e){showToast("Errore salvataggio");console.error(e);}
+  } catch(e) {
+    showToast("Errore salvataggio");
+    console.error(e);
+  }
 }
 
 // ============================================================
