@@ -240,7 +240,7 @@ let modalPrenId=null, modalPulKey=null, editPulIdx=-1, modalPulIsVergine=false;
 // Genera ID univoco per nuove pulizie: PUL-yyyymmdd-random
 function generatePuliziaId(key) {
  // return "P" + Date.now();
-  return "P" + Math.floor(Math.random() * 90000 + 10000);
+  return Math.floor(Math.random() * 90000 + 10000);
 }
 
 
