@@ -426,6 +426,9 @@ async function savePulizia(){
   soppressa.delete(modalPulKey);
   if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
   closeModal("modalPulizie"); renderCalendar();
+     // verifichiamo se viene creato l'id
+     console.log("Dati che mando:", JSON.stringify(nr));
+     
   await saveToSheet("pulizia",nr);
 }
 
