@@ -1,8 +1,9 @@
-<!-- BOLO APARTMENT CALENDAR v1.3
-     Modifiche rispetto a v1.1:
-     - Rimossa la logica settimana su mobile
-     - Mese intero sempre visibile su tutti i dispositivi
-     - Celle a dimensione minima fissa, testo troncato
+<!-- BOLO APARTMENT CALENDAR v1.4
+     Modifiche rispetto a v1.3:
+     - Aggiunto widget grafico configurazione camere nel banner prenotazione
+     - Bordo giallo su check-in/check-out quando camere non configurate
+     - Legenda aggiornata: "Configurazione da fare"
+     - Salvataggio camere su Google Sheet
 -->
 <!DOCTYPE html>
 <html lang="it">
@@ -15,12 +16,14 @@
   --pren-a-bg:#1565C0; --pren-a-light:#BBDEFB; --pren-a-text:#fff; --pren-a-label:#0D47A1;
   --pren-b-bg:#E65100; --pren-b-light:#FFE0B2; --pren-b-text:#fff; --pren-b-label:#BF360C;
   --clean-todo-bg:#F9A825; --clean-todo-text:#4E2C00;
+  --config-todo:#F9A825; /* stesso giallo per "configurazione da fare" */
   --clean-1-bg:#00897B; --clean-1-text:#fff;
   --clean-2-bg:#6A1B9A; --clean-2-text:#fff;
   --clean-3-bg:#C62828; --clean-3-text:#fff;
   --clean-extra-bg:#37474F; --clean-extra-text:#fff;
   --accent:#C07A3A; --accent-dark:#A06030;
   --bg:#F5F3EE; --surface:#fff; --border:#D8D4CC; --text:#2C2C2A; --muted:#888880;
+  --verde:#4CAF50; --blu:#1565C0;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);}
@@ -42,10 +45,9 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .print-btn:hover{background:var(--bg);}
 .sync-status{font-size:11px;color:var(--muted);}
 
-/* GRIGLIA — sempre scroll orizzontale se necessario */
+/* GRIGLIA */
 .cal-wrap{padding:8px;overflow-x:auto;}
-.cal-inner{min-width:420px;} /* larghezza minima garantita */
-
+.cal-inner{min-width:420px;}
 .day-headers{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;margin-bottom:2px;}
 .day-header{text-align:center;font-size:10px;font-weight:bold;color:var(--muted);padding:3px 0;letter-spacing:.04em;}
 .weeks{display:flex;flex-direction:column;gap:2px;}
@@ -59,19 +61,18 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .day-num{font-size:10px;font-weight:bold;color:var(--muted);}
 .day-num.today-num{background:var(--accent);color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;}
 
-/* SOTTO-CELLE — altezza fissa, testo sempre troncato */
+/* SOTTO-CELLE */
 .sub-cells{display:grid;grid-template-columns:1fr 1fr 1fr;}
 .sub{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1px;text-align:center;height:48px;border-right:1px solid var(--border);cursor:pointer;overflow:hidden;}
 .sub:last-child{border-right:none;}
 .sub:hover{filter:brightness(.9);}
 .sub-name{font-size:7px;font-weight:bold;display:block;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;padding:0 1px;}
 .sub-detail{font-size:6px;display:block;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;padding:0 1px;}
-
 .sub-empty{background:#FAFAF7;}
 .sub-empty:hover{background:#EFEDE8;}
 .sub-plus{color:#CCC;font-size:12px;}
 
-/* Prenotazione piena */
+/* Prenotazione */
 .sub-checkout-a,.sub-checkin-a{background:var(--pren-a-bg)!important;border-top:3px solid var(--pren-a-label);}
 .sub-checkout-a .sub-name,.sub-checkin-a .sub-name,
 .sub-checkout-a .sub-detail,.sub-checkin-a .sub-detail{color:var(--pren-a-text);}
@@ -79,7 +80,10 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .sub-checkout-b .sub-name,.sub-checkin-b .sub-name,
 .sub-checkout-b .sub-detail,.sub-checkin-b .sub-detail{color:var(--pren-b-text);}
 
-/* Soggiorno in corso */
+/* Configurazione camere da fare: bordo giallo superiore */
+.sub-config-todo{border-top:3px solid var(--config-todo)!important;}
+
+/* Soggiorno */
 .sub-stay-a{background:var(--pren-a-light)!important;border-top:3px solid var(--pren-a-bg);}
 .sub-stay-b{background:var(--pren-b-light)!important;border-top:3px solid var(--pren-b-bg);}
 
@@ -101,19 +105,51 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 
 /* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin:auto;}
 .modal h3{font-size:16px;font-weight:bold;margin-bottom:3px;}
 .modal-date{font-size:12px;color:var(--muted);margin-bottom:14px;font-family:sans-serif;}
 .modal label{font-size:11px;font-weight:bold;color:var(--muted);display:block;margin-bottom:4px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.04em;}
-.modal select,.modal input{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:12px;font-family:sans-serif;color:var(--text);background:var(--surface);}
+.modal select,.modal input[type=text],.modal input[type=number]{width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:12px;font-family:sans-serif;color:var(--text);background:var(--surface);}
 .modal-btns{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;}
 .btn-save{flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:bold;}
 .btn-save:hover{background:var(--accent-dark);}
 .btn-delete{background:#C62828;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
 .btn-delete:hover{background:#B71C1C;}
 .btn-cancel{background:var(--bg);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;}
+
+/* WIDGET CAMERE */
+.camere-wrap{margin-top:12px;margin-bottom:12px;}
+.camere-title{font-size:11px;font-weight:bold;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;font-family:sans-serif;}
+.camere-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.camera-card{border-radius:10px;overflow:hidden;}
+.camera-card.verde{border:2px solid #4CAF50;}
+.camera-card.blu{border:2px solid #1565C0;}
+.camera-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;}
+.camera-card.verde .camera-header{background:#F1F8E9;}
+.camera-card.blu .camera-header{background:#E3F2FD;}
+.camera-nome{font-size:11px;font-weight:bold;font-family:sans-serif;display:flex;align-items:center;gap:5px;}
+.camera-card.verde .camera-nome{color:#2E7D32;}
+.camera-card.blu .camera-nome{color:#0D47A1;}
+.cam-dot{width:8px;height:8px;border-radius:50%;}
+.cam-toggle{font-size:10px;padding:2px 8px;border-radius:20px;border:none;cursor:pointer;font-family:sans-serif;font-weight:bold;}
+.camera-card.verde .cam-toggle.open{background:#4CAF50;color:#fff;}
+.camera-card.blu .cam-toggle.open{background:#1565C0;color:#fff;}
+.cam-toggle.closed{background:#e0e0e0;color:#888;}
+.camera-body{padding:6px 8px;}
+.camera-body.disabled{opacity:.3;pointer-events:none;}
+.config-sw{display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:6px;}
+.config-sw button{flex:1;padding:3px 4px;font-size:10px;font-family:sans-serif;border:none;cursor:pointer;background:#f5f5f5;color:#666;}
+.config-sw button.active{background:#4CAF50;color:#fff;}
+.beds-area{display:flex;gap:4px;align-items:flex-end;}
+.bed-col{display:flex;flex-direction:column;gap:3px;flex:1;}
+.bed-btn{border:1px solid #ddd;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:sans-serif;font-weight:bold;transition:background .15s;}
+.bed-btn.prep-verde{background:#C8E6C9;border-color:#4CAF50;color:#1B5E20;}
+.bed-btn.prep-blu{background:#BBDEFB;border-color:#1565C0;color:#0D47A1;}
+.bed-btn.skip{background:#f5f5f5;border-color:#ddd;color:#aaa;}
+.bed-matr{height:60px;}
+.bed-sing{height:28px;}
 
 /* TOAST */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:999;max-width:300px;text-align:center;font-family:sans-serif;animation:fadeIn .2s ease;}
@@ -127,7 +163,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   body{background:#fff;}
   .day-cell{border:1px solid #999;}
 }
-
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:14px;font-family:sans-serif;}
 </style>
 </head>
@@ -161,11 +196,11 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia da fare</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#F9A825;"></div> Pulizia / configurazione da fare</div>
   <div class="legend-item"><div class="legend-dot" style="background:#00897B;"></div> Erica</div>
   <div class="legend-item"><div class="legend-dot" style="background:#6A1B9A;"></div> Manu</div>
   <div class="legend-item"><div class="legend-dot" style="background:#C62828;"></div> Sello</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#000;border:2px solid #555;"></div> ★ Straordinaria (bordo nero)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#000;border:2px solid #555;"></div> ★ Straordinaria</div>
 </div>
 
 <!-- MODAL PULIZIE -->
@@ -178,7 +213,6 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
       <option value="Iniziale">Iniziale (prepara per nuovi ospiti)</option>
       <option value="Straordinaria">Straordinaria (a metà soggiorno)</option>
     </select>
-    <!-- Modifica nomi qui e in CLEANER_CSS nel JS -->
     <label>Chi pulisce</label>
     <select id="pulChi">
       <option value="">— seleziona —</option>
@@ -201,12 +235,71 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="modal">
     <h3>🏠 Prenotazione</h3>
     <div class="modal-date" id="prenDate"></div>
+
     <label>Nome ospite</label>
     <input type="text" id="prenNome" placeholder="es. Rossi">
     <label>Numero ospiti</label>
     <input type="number" id="prenOspiti" placeholder="es. 3" min="1" max="6">
     <label>Note</label>
     <input type="text" id="prenNote" placeholder="Note aggiuntive">
+
+    <!-- WIDGET CAMERE -->
+    <div class="camere-wrap">
+      <div class="camere-title">configurazione camere</div>
+      <div class="camere-grid">
+
+        <!-- CAMERA VERDE -->
+        <div class="camera-card verde">
+          <div class="camera-header">
+            <div class="camera-nome">
+              <div class="cam-dot" id="vDot" style="background:#4CAF50;"></div>
+              verde
+            </div>
+            <button class="cam-toggle open" id="vToggle" onclick="toggleCamera('v')">aperta</button>
+          </div>
+          <div class="camera-body" id="vBody">
+            <div class="config-sw" id="vConfigSw">
+              <button id="vBtnMatr" class="active" onclick="setVerdeConfig('MATR')">matr.</button>
+              <button id="vBtn2sing" onclick="setVerdeConfig('2SING')">2 sing.</button>
+            </div>
+            <div class="beds-area">
+              <!-- colonna sinistra: letto1 (matr o sing1) + letto2 (sing2, solo 2sing) -->
+              <div class="bed-col">
+                <button class="bed-btn prep-verde bed-matr" id="vL1" onclick="toggleBedV(1)">matr.</button>
+                <button class="bed-btn prep-verde bed-sing" id="vL2" style="display:none" onclick="toggleBedV(2)">s2</button>
+              </div>
+              <!-- colonna destra: singolo fisso -->
+              <div class="bed-col">
+                <button class="bed-btn prep-verde bed-matr" id="vL3" onclick="toggleBedV(3)">sing.</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAMERA BLU -->
+        <div class="camera-card blu">
+          <div class="camera-header">
+            <div class="camera-nome">
+              <div class="cam-dot" id="bDot" style="background:#1565C0;"></div>
+              blu
+            </div>
+            <button class="cam-toggle open" id="bToggle" onclick="toggleCamera('b')">aperta</button>
+          </div>
+          <div class="camera-body" id="bBody">
+            <div class="beds-area">
+              <div class="bed-col">
+                <button class="bed-btn prep-blu bed-matr" id="bL1" onclick="toggleBedB(1)">matr.</button>
+              </div>
+              <div class="bed-col">
+                <button class="bed-btn prep-blu bed-sing" id="bL2" onclick="toggleBedB(2)" style="height:28px">sing.</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modalPrenotazione')">Annulla</button>
       <button class="btn-save" onclick="savePrenotazione()">Salva</button>
@@ -221,25 +314,26 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 const SHEET_ID = "1kwUIGJKXYGkLSD97zaL-vnf2cVjjK3Hv7OnUYYCDHzE";
 const BASE_URL = `https://opensheet.elk.sh/${SHEET_ID}/`;
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwihCf5QjHa6uE4o9_uGvLjDOQKU-1r_vXt-xnMEcfjtYEr8xDV2dIZy92T-vEJ7Lhr/exec";
-// Mappa nome → classe CSS colore. Aggiorna se cambi i nomi nel select.
 const CLEANER_CSS = { "Erica":"sub-clean-1", "Manu":"sub-clean-2", "Sello":"sub-clean-3" };
-
 const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                 "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 // ============================================================
-//  STATO
+//  STATO GLOBALE
 // ============================================================
 let curYear=new Date().getFullYear(), curMonth=new Date().getMonth();
 let prenotazioni=[], pulizie=[], soppressa=new Set();
 let modalPrenId=null, modalPulKey=null, editPulIdx=-1, modalPulIsVergine=false;
-     
-// Genera ID univoco per nuove pulizie: PUL-yyyymmdd-random
-function generatePuliziaId(key) {
- // return "P" + Date.now();
+
+// Stato widget camere nel modal
+let camState = {
+  vAperta:true, vConfig:'MATR', vL1:true, vL2:true, vL3:true,
+  bAperta:true, bL1:true, bL2:true
+};
+
+function generatePuliziaId() {
   return Math.floor(Math.random() * 90000 + 10000);
 }
-
 
 // ============================================================
 //  CARICAMENTO DATI
@@ -247,20 +341,23 @@ function generatePuliziaId(key) {
 async function loadData() {
   document.getElementById("syncStatus").textContent="Aggiornamento...";
   try {
-    await fetch(APPS_SCRIPT_URL, { method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"}, body:JSON.stringify({action:"syncNow"}) });
+    await fetch(APPS_SCRIPT_URL, { method:"POST", mode:"no-cors", body:JSON.stringify({action:"syncNow"}) });
     const [rP,rC]=await Promise.all([
       fetch(BASE_URL+"Prenotazioni").then(r=>r.json()),
       fetch(BASE_URL+"Pulizie").then(r=>r.json())
     ]);
     prenotazioni=(rP||[]).map(r=>({
       id:r["ID"]||"", checkIn:r["CheckIn"]||"", checkOut:r["CheckOut"]||"",
-      ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||""
+      ospiti:r["Ospiti"]||"", note:r["Note"]||"", nome:r["Nome"]||"",
+      verdeAperta: r["VerdeAperta"], verdeConfig: r["VerdeConfig"]||"",
+      verdeLetto1: r["VerdeLetto1"], verdeLetto2: r["VerdeLetto2"], verdeLetto3: r["VerdeLetto3"],
+      bluAperta: r["BluAperta"], bluLetto1: r["BluLetto1"], bluLetto2: r["BluLetto2"]
     })).filter(r=>r.id&&r.checkIn&&r.checkOut);
 
-   pulizie=(rC||[]).map(r=>({
-       id:r["IDPulizia"]||"", data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
-       chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
-     })).filter(r=>r.data);
+    pulizie=(rC||[]).map(r=>({
+      id:r["IDPulizia"]||"", data:r["DataPulizia"]||"", tipo:r["TipoPulizia"]||"",
+      chi:r["ChiPulisce"]||"", idPren:r["IDPrenotazione"]||"", note:r["Note"]||""
+    })).filter(r=>r.data);
 
     assignColors();
     renderCalendar();
@@ -304,6 +401,9 @@ function prenDuringStay(k){
 function getPulizia(k)   { return pulizie.find(p=>ddmmToKey(p.data)===k); }
 function getPuliziaIdx(k){ return pulizie.findIndex(p=>ddmmToKey(p.data)===k); }
 
+// Camere configurate = verdeAperta non è null/undefined/""
+function camereConfigure(p){ return p && p.verdeAperta !== "" && p.verdeAperta !== null && p.verdeAperta !== undefined; }
+
 // ============================================================
 //  RENDER SOTTO-CELLE
 // ============================================================
@@ -311,9 +411,13 @@ function renderSubCells(k) {
   const checkout=prenByCheckout(k), checkin=prenByCheckin(k);
   const staying=prenDuringStay(k), pulizia=getPulizia(k);
 
+  // Aggiunge bordo giallo se camere non configurate
+  const configTodoOut  = checkout && !camereConfigure(checkout)  ? " sub-config-todo" : "";
+  const configTodoIn   = checkin  && !camereConfigure(checkin)   ? " sub-config-todo" : "";
+
   // CHECK-OUT
   let out=checkout
-    ?`<div class="sub sub-checkout-${checkout.colorClass}" onclick="openModalPren('${checkout.id}')">
+    ?`<div class="sub sub-checkout-${checkout.colorClass}${configTodoOut}" onclick="openModalPren('${checkout.id}')">
         <span class="sub-name">${checkout.nome||"Ospite"}</span>
         ${checkout.ospiti?`<span class="sub-detail">${checkout.ospiti} osp.</span>`:""}
       </div>`
@@ -324,19 +428,16 @@ function renderSubCells(k) {
   // PULIZIE
   let clean;
   if(pulizia){
-    // Colore sempre per persona, bordo top nero se straordinaria
     const cls=CLEANER_CSS[pulizia.chi]||"sub-clean-1";
     const extraStyle=pulizia.tipo==="Straordinaria"?"border-top:3px solid #000!important;":"";
     clean=`<div class="sub ${cls}" style="${extraStyle}" onclick="openModalPulizia('${k}',false)">
       <span class="sub-name">${pulizia.chi||"—"}</span>
       <span class="sub-detail">${pulizia.tipo==="Straordinaria"?"★ Straord.":pulizia.tipo||""}</span></div>`;
   } else if(checkout&&!soppressa.has(k)){
-    // Pulizia vergine: solo al check-out, se non soppressa
     clean=`<div class="sub sub-clean-todo" onclick="openModalPulizia('${k}',true)">
       <span class="sub-name">Pulizia</span>
       <span class="sub-detail">da fare ▸</span></div>`;
   } else if(staying){
-    // Soggiorno: continuità colore
     clean=`<div class="sub sub-stay-${staying.colorClass}" onclick="openModalPulizia('${k}',false)">
       <span class="sub-name" style="opacity:.2">+</span></div>`;
   } else {
@@ -346,7 +447,7 @@ function renderSubCells(k) {
 
   // CHECK-IN
   let inn=checkin
-    ?`<div class="sub sub-checkin-${checkin.colorClass}" onclick="openModalPren('${checkin.id}')">
+    ?`<div class="sub sub-checkin-${checkin.colorClass}${configTodoIn}" onclick="openModalPren('${checkin.id}')">
         <span class="sub-name">${checkin.nome||"Ospite"}</span>
         ${checkin.ospiti?`<span class="sub-detail">${checkin.ospiti} osp.</span>`:""}
       </div>`
@@ -358,7 +459,7 @@ function renderSubCells(k) {
 }
 
 // ============================================================
-//  RENDER CALENDARIO — sempre mese intero
+//  RENDER CALENDARIO
 // ============================================================
 function renderCalendar() {
   document.getElementById("monthLabel").textContent=MONTHS[curMonth]+" "+curYear;
@@ -367,7 +468,6 @@ function renderCalendar() {
   const dim=new Date(curYear,curMonth+1,0).getDate();
   let so=fd.getDay()-1; if(so<0)so=6;
   const total=Math.ceil((so+dim)/7)*7;
-
   let html="";
   for(let i=0;i<total;i+=7){
     html+=`<div class="week-row">`;
@@ -387,14 +487,94 @@ function renderCalendar() {
   document.getElementById("weeksGrid").innerHTML=html;
 }
 
-// ============================================================
-//  NAVIGAZIONE MESE
-// ============================================================
 function changeMonth(dir){
   curMonth+=dir;
   if(curMonth>11){curMonth=0;curYear++;}
   if(curMonth<0){curMonth=11;curYear--;}
   renderCalendar();
+}
+
+// ============================================================
+//  WIDGET CAMERE — funzioni di interazione
+// ============================================================
+function parseBool(v, def=true) {
+  if(v===true||v==="TRUE"||v===1) return true;
+  if(v===false||v==="FALSE"||v===0) return false;
+  return def;
+}
+
+function toggleCamera(cam) {
+  if(cam==='v'){
+    camState.vAperta=!camState.vAperta;
+    document.getElementById('vBody').className='camera-body'+(camState.vAperta?'':' disabled');
+    document.getElementById('vToggle').textContent=camState.vAperta?'aperta':'chiusa';
+    document.getElementById('vToggle').className='cam-toggle '+(camState.vAperta?'open':'closed');
+    document.getElementById('vDot').style.background=camState.vAperta?'#4CAF50':'#9E9E9E';
+  } else {
+    camState.bAperta=!camState.bAperta;
+    document.getElementById('bBody').className='camera-body'+(camState.bAperta?'':' disabled');
+    document.getElementById('bToggle').textContent=camState.bAperta?'aperta':'chiusa';
+    document.getElementById('bToggle').className='cam-toggle '+(camState.bAperta?'open':'closed');
+    document.getElementById('bDot').style.background=camState.bAperta?'#1565C0':'#9E9E9E';
+  }
+}
+
+function setVerdeConfig(cfg) {
+  camState.vConfig=cfg;
+  document.getElementById('vBtnMatr').className=cfg==='MATR'?'active':'';
+  document.getElementById('vBtn2sing').className=cfg==='2SING'?'active':'';
+  const l1=document.getElementById('vL1');
+  const l2=document.getElementById('vL2');
+  if(cfg==='MATR'){
+    l1.textContent='matr.'; l1.className='bed-btn '+(camState.vL1?'prep-verde':'skip')+' bed-matr';
+    l2.style.display='none';
+  } else {
+    l1.textContent='s1'; l1.className='bed-btn '+(camState.vL1?'prep-verde':'skip')+' bed-sing';
+    l2.style.display='block';
+  }
+}
+
+function toggleBedV(n) {
+  camState['vL'+n]=!camState['vL'+n];
+  const el=document.getElementById('vL'+n);
+  const v=camState['vL'+n];
+  el.className=el.className.replace(/prep-verde|skip/,v?'prep-verde':'skip');
+}
+
+function toggleBedB(n) {
+  camState['bL'+n]=!camState['bL'+n];
+  const el=document.getElementById('bL'+n);
+  const v=camState['bL'+n];
+  el.className=el.className.replace(/prep-blu|skip/,v?'prep-blu':'skip');
+}
+
+function renderCamWidget(p) {
+  // Imposta lo stato del widget dai dati della prenotazione
+  camState.vAperta  = parseBool(p.verdeAperta, true);
+  camState.vConfig  = p.verdeConfig||'MATR';
+  camState.vL1      = parseBool(p.verdeLetto1, true);
+  camState.vL2      = parseBool(p.verdeLetto2, true);
+  camState.vL3      = parseBool(p.verdeLetto3, true);
+  camState.bAperta  = parseBool(p.bluAperta, true);
+  camState.bL1      = parseBool(p.bluLetto1, true);
+  camState.bL2      = parseBool(p.bluLetto2, true);
+
+  // Camera verde
+  document.getElementById('vBody').className='camera-body'+(camState.vAperta?'':' disabled');
+  document.getElementById('vToggle').textContent=camState.vAperta?'aperta':'chiusa';
+  document.getElementById('vToggle').className='cam-toggle '+(camState.vAperta?'open':'closed');
+  document.getElementById('vDot').style.background=camState.vAperta?'#4CAF50':'#9E9E9E';
+  setVerdeConfig(camState.vConfig);
+  document.getElementById('vL3').className='bed-btn '+(camState.vL3?'prep-verde':'skip')+' bed-matr';
+  document.getElementById('vL3').textContent='sing.';
+
+  // Camera blu
+  document.getElementById('bBody').className='camera-body'+(camState.bAperta?'':' disabled');
+  document.getElementById('bToggle').textContent=camState.bAperta?'aperta':'chiusa';
+  document.getElementById('bToggle').className='cam-toggle '+(camState.bAperta?'open':'closed');
+  document.getElementById('bDot').style.background=camState.bAperta?'#1565C0':'#9E9E9E';
+  document.getElementById('bL1').className='bed-btn '+(camState.bL1?'prep-blu':'skip')+' bed-matr';
+  document.getElementById('bL2').className='bed-btn '+(camState.bL2?'prep-blu':'skip')+' bed-sing';
 }
 
 // ============================================================
@@ -419,15 +599,12 @@ function openModalPulizia(k,isVergine){
 async function savePulizia(){
   const id=editPulIdx>=0&&pulizie[editPulIdx].id
     ?pulizie[editPulIdx].id
-    :generatePuliziaId(modalPulKey);
+    :generatePuliziaId();
   const nr={id,data:keyToDdmm(modalPulKey),tipo:document.getElementById("pulTipo").value,
     chi:document.getElementById("pulChi").value,idPren:"",note:document.getElementById("pulNote").value};
   soppressa.delete(modalPulKey);
   if(editPulIdx>=0)pulizie[editPulIdx]=nr; else pulizie.push(nr);
   closeModal("modalPulizie"); renderCalendar();
-     // verifichiamo se viene creato l'id
-     console.log("Dati che mando:", JSON.stringify(nr));
-     
   await saveToSheet("pulizia",nr);
 }
 
@@ -453,36 +630,45 @@ function openModalPren(id){
   document.getElementById("prenNome").value  =p.nome  ||"";
   document.getElementById("prenOspiti").value=p.ospiti||"";
   document.getElementById("prenNote").value  =p.note  ||"";
+  renderCamWidget(p);
   document.getElementById("modalPrenotazione").classList.add("open");
 }
 
 async function savePrenotazione(){
   const p=prenotazioni.find(x=>x.id===modalPrenId); if(!p)return;
-  p.nome  =document.getElementById("prenNome").value;
-  p.ospiti=document.getElementById("prenOspiti").value;
-  p.note  =document.getElementById("prenNote").value;
+  p.nome        = document.getElementById("prenNome").value;
+  p.ospiti      = document.getElementById("prenOspiti").value;
+  p.note        = document.getElementById("prenNote").value;
+  p.verdeAperta = camState.vAperta;
+  p.verdeConfig = camState.vConfig;
+  p.verdeLetto1 = camState.vL1;
+  p.verdeLetto2 = camState.vL2;
+  p.verdeLetto3 = camState.vL3;
+  p.bluAperta   = camState.bAperta;
+  p.bluLetto1   = camState.bL1;
+  p.bluLetto2   = camState.bL2;
+
   closeModal("modalPrenotazione"); assignColors(); renderCalendar();
-  await saveToSheet("prenotazione",{id:p.id,nome:p.nome,ospiti:p.ospiti,note:p.note});
+  await saveToSheet("prenotazione",{
+    id:p.id, nome:p.nome, ospiti:p.ospiti, note:p.note,
+    verdeAperta:p.verdeAperta, verdeConfig:p.verdeConfig,
+    verdeLetto1:p.verdeLetto1, verdeLetto2:p.verdeLetto2, verdeLetto3:p.verdeLetto3,
+    bluAperta:p.bluAperta, bluLetto1:p.bluLetto1, bluLetto2:p.bluLetto2
+  });
 }
 
 // ============================================================
 //  SCRITTURA SU GOOGLE SHEET
 // ============================================================
 async function saveToSheet(action, data) {
-  if(APPS_SCRIPT_URL === "INSERISCI_QUI_URL_APPS_SCRIPT"){
-    showToast("⚠️ Dati in memoria (Apps Script non configurato)"); return;
+  if(APPS_SCRIPT_URL==="INSERISCI_QUI_URL_APPS_SCRIPT"){
+    showToast("⚠️ Dati in memoria"); return;
   }
   try {
-    // Usiamo FormData invece di JSON per evitare problemi CORS con Apps Script
-    const payload = typeof data === "string" 
-      ? JSON.stringify({action, id: data})
+    const payload = typeof data==="string"
+      ? JSON.stringify({action, id:data})
       : JSON.stringify({action, ...data});
-    
-    await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: payload
-    });
+    await fetch(APPS_SCRIPT_URL, {method:"POST", mode:"no-cors", body:payload});
     showToast("✓ Salvato");
   } catch(e) {
     showToast("Errore salvataggio");
@@ -508,4 +694,3 @@ loadData();
 </script>
 </body>
 </html>
-
